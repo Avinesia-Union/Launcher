@@ -2,10 +2,11 @@ package pro.gravit.launchserver.socket.response.profile;
 
 import io.netty.channel.ChannelHandlerContext;
 import pro.gravit.launcher.events.request.ProfileByUsernameRequestEvent;
-import pro.gravit.launcher.profiles.PlayerProfile;
 import pro.gravit.launchserver.auth.AuthProviderPair;
 import pro.gravit.launchserver.socket.Client;
 import pro.gravit.launchserver.socket.response.SimpleResponse;
+
+import java.util.UUID;
 
 public class ProfileByUsername extends SimpleResponse {
     String username;
@@ -18,13 +19,14 @@ public class ProfileByUsername extends SimpleResponse {
 
     @Override
     public void execute(ChannelHandlerContext ctx, Client client) throws Exception {
+        UUID uuid;
         AuthProviderPair pair = client.auth;
         if (pair == null) pair = server.config.getAuthProviderPair();
-        PlayerProfile profile = server.authManager.getPlayerProfile(pair, username);
-        if (profile == null) {
+        uuid = pair.handler.usernameToUUID(username);
+        if (uuid == null) {
             sendError("User not found");
             return;
         }
-        sendResult(new ProfileByUsernameRequestEvent(profile));
+        sendResult(new ProfileByUsernameRequestEvent(ProfileByUUIDResponse.getProfile(uuid, username, this.client, pair.textureProvider)));
     }
 }

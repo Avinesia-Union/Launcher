@@ -137,20 +137,6 @@ public final class IOHelper {
         return ((InetSocketAddress) address).getAddress().getHostAddress();
     }
 
-    public static Path getRoot() {
-        switch (JVMHelper.OS_TYPE) {
-            case MUSTDIE: {
-                String drive = System.getenv("SystemDrive").concat("\\");
-                return Paths.get(drive);
-            }
-            case LINUX:
-            case MACOSX: {
-                return Paths.get("/");
-            }
-        }
-        throw new UnsupportedOperationException();
-    }
-
     public static byte[] getResourceBytes(String name) throws IOException {
         return read(getResourceURL(name));
     }
@@ -587,29 +573,6 @@ public final class IOHelper {
     public static void write(Path file, byte[] bytes) throws IOException {
         createParentDirs(file);
         Files.write(file, bytes, WRITE_OPTIONS);
-    }
-
-    public static InputStream nonClosing(InputStream in) {
-        return new FilterInputStream(in) {
-            @Override
-            public void close() {
-                // ignore
-            }
-        };
-    }
-
-    public static OutputStream nonClosing(OutputStream out) {
-        return new FilterOutputStream(out) {
-            @Override
-            public void write(byte[] b, int offset, int len) throws IOException {
-                super.out.write(b, offset, len);
-            }
-
-            @Override
-            public void close() {
-                // ignore
-            }
-        };
     }
 
     private static class MoveFileVisitor implements FileVisitor<Path> {

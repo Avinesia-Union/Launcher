@@ -7,28 +7,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 public class OptionalView {
     public Set<OptionalFile> enabled = new HashSet<>();
-    @Deprecated
     public Map<OptionalFile, Set<OptionalFile>> dependenciesCountMap = new HashMap<>();
-    public Map<OptionalFile, OptionalFileInstallInfo> installInfo = new HashMap<>();
     public Set<OptionalFile> all;
-
-    public OptionalView(ClientProfile profile) {
-        this.all = profile.getOptional();
-        for (OptionalFile f : this.all) {
-            if (f.mark) enable(f);
-        }
-    }
-
-    public OptionalView(OptionalView view) {
-        this.enabled = new HashSet<>(view.enabled);
-        this.dependenciesCountMap = new HashMap<>(view.dependenciesCountMap);
-        this.installInfo = new HashMap<>(view.installInfo);
-        this.all = view.all;
-    }
 
     @SuppressWarnings("unchecked")
     public <T extends OptionalAction> Set<T> getActionsByClass(Class<T> clazz) {
@@ -66,7 +49,6 @@ public class OptionalView {
         return results;
     }
 
-    @Deprecated
     public void enable(OptionalFile file) {
         if (enabled.contains(file)) return;
         enabled.add(file);
@@ -85,7 +67,6 @@ public class OptionalView {
         }
     }
 
-    @Deprecated
     public void disable(OptionalFile file) {
         if (!enabled.remove(file)) return;
         file.watchEvent(false);
@@ -111,56 +92,16 @@ public class OptionalView {
         }
     }
 
-    public void enable(OptionalFile file, boolean manual, BiConsumer<OptionalFile, Boolean> callback) {
-        if (enabled.contains(file)) return;
-        enabled.add(file);
-        if (callback != null) callback.accept(file, true);
-        OptionalFileInstallInfo installInfo = this.installInfo.get(file);
-        if (installInfo == null) {
-            installInfo = new OptionalFileInstallInfo();
-            this.installInfo.put(file, installInfo);
-        }
-        installInfo.isManual = manual;
-        if (file.dependencies != null) {
-            for (OptionalFile dep : file.dependencies) {
-                enable(dep, false, callback);
-            }
-        }
-        if (file.conflict != null) {
-            for (OptionalFile conflict : file.conflict) {
-                disable(conflict);
-            }
+    public OptionalView(ClientProfile profile) {
+        this.all = profile.getOptional();
+        for (OptionalFile f : this.all) {
+            if (f.mark) enable(f);
         }
     }
 
-    public void disable(OptionalFile file, BiConsumer<OptionalFile, Boolean> callback) {
-        if (!enabled.remove(file)) return;
-        if (callback != null) callback.accept(file, false);
-        for (OptionalFile dep : all) {
-            if (dep.dependencies != null && contains(file, dep.dependencies)) {
-                disable(dep, callback);
-            }
-        }
-        if (file.dependencies != null) {
-            for (OptionalFile dep : file.dependencies) {
-                OptionalFileInstallInfo installInfo = this.installInfo.get(dep);
-                if (installInfo != null && !installInfo.isManual) {
-                    disable(file, callback);
-                }
-            }
-        }
-    }
-
-    private boolean contains(OptionalFile file, OptionalFile[] array) {
-        for (OptionalFile e : array) {
-            if (e == file) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static class OptionalFileInstallInfo {
-        public boolean isManual;
+    public OptionalView(OptionalView view) {
+        this.enabled = new HashSet<>(view.enabled);
+        this.dependenciesCountMap = new HashMap<>(view.dependenciesCountMap);
+        this.all = view.all;
     }
 }

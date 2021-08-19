@@ -7,8 +7,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelMatchers;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.Launcher;
 import pro.gravit.launcher.events.ExceptionEvent;
 import pro.gravit.launcher.events.RequestEvent;
@@ -38,6 +36,7 @@ import pro.gravit.launchserver.socket.response.update.UpdateResponse;
 import pro.gravit.utils.BiHookSet;
 import pro.gravit.utils.ProviderMap;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.lang.reflect.Type;
 import java.util.UUID;
@@ -49,22 +48,37 @@ public class WebSocketService {
     public static final ProviderMap<WebSocketServerResponse> providers = new ProviderMap<>();
     public final ChannelGroup channels;
     public final BiHookSet<WebSocketRequestContext, ChannelHandlerContext> hook = new BiHookSet<>();
+    private final LaunchServer server;
+    private final Gson gson;
+
     //Statistic data
     public final AtomicLong shortRequestLatency = new AtomicLong();
     public final AtomicLong shortRequestCounter = new AtomicLong();
+
     public final AtomicLong middleRequestLatency = new AtomicLong();
     public final AtomicLong middleRequestCounter = new AtomicLong();
+
     public final AtomicLong longRequestLatency = new AtomicLong();
     public final AtomicLong longRequestCounter = new AtomicLong();
+
     public final AtomicLong lastRequestTime = new AtomicLong();
-    private final LaunchServer server;
-    private final Gson gson;
-    private transient final Logger logger = LogManager.getLogger();
 
     public WebSocketService(ChannelGroup channels, LaunchServer server) {
         this.channels = channels;
         this.server = server;
+        //this.gsonBuiler.registerTypeAdapter(WebSocketServerResponse.class, new JsonResponseAdapter(this));
+        //this.gsonBuiler.registerTypeAdapter(WebSocketEvent.class, new JsonResultSerializeAdapter());
+        //this.gsonBuiler.registerTypeAdapter(HashedEntry.class, new HashedEntryAdapter());
         this.gson = Launcher.gsonManager.gson;
+    }
+
+    public void forEachActiveChannels(BiConsumer<Channel, WebSocketFrameHandler> callback) {
+        for(Channel channel : channels) {
+            if (channel == null || channel.pipeline() == null) continue;
+            WebSocketFrameHandler wsHandler = channel.pipeline().get(WebSocketFrameHandler.class);
+            if (wsHandler == null) continue;
+            callback.accept(channel, wsHandler);
+        };
     }
 
     public static void registerResponses() {
@@ -91,18 +105,6 @@ public class WebSocketService {
         providers.register("pingServer", PingServerResponse.class);
         providers.register("currentUser", CurrentUserResponse.class);
         providers.register("features", FeaturesResponse.class);
-        providers.register("refreshToken", RefreshTokenResponse.class);
-        providers.register("restore", RestoreResponse.class);
-        providers.register("additionalData", AdditionalDataResponse.class);
-    }
-
-    public void forEachActiveChannels(BiConsumer<Channel, WebSocketFrameHandler> callback) {
-        for (Channel channel : channels) {
-            if (channel == null || channel.pipeline() == null) continue;
-            WebSocketFrameHandler wsHandler = channel.pipeline().get(WebSocketFrameHandler.class);
-            if (wsHandler == null) continue;
-            callback.accept(channel, wsHandler);
-        }
     }
 
     public void process(ChannelHandlerContext ctx, TextWebSocketFrame frame, Client client, String ip) {
@@ -166,7 +168,7 @@ public class WebSocketService {
         try {
             response.execute(ctx, client);
         } catch (Exception e) {
-            logger.error("WebSocket request processing failed", e);
+            LogHelper.error(e);
             RequestEvent event;
             if (server.config.netty.sendExceptionEnabled) {
                 event = new ExceptionEvent(e);
@@ -218,30 +220,29 @@ public class WebSocketService {
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
             if (wsHandler == null) continue;
             Client client = wsHandler.getClient();
-            if (client == null || !userUuid.equals(client.uuid)) continue;
+            if(client == null || !userUuid.equals(client.uuid)) continue;
             ch.writeAndFlush(new TextWebSocketFrame(gson.toJson(obj, type)), ch.voidPromise());
         }
     }
 
-    @Deprecated
     public void updateDaoObject(UUID userUuid, User daoObject, Consumer<Channel> callback) {
-        for (Channel ch : channels) {
+        for(Channel ch : channels) {
             if (ch == null || ch.pipeline() == null) continue;
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
             if (wsHandler == null) continue;
             Client client = wsHandler.getClient();
-            if (client == null || client.daoObject == null || !userUuid.equals(client.uuid)) continue;
+            if(client == null || client.daoObject == null || !userUuid.equals(client.uuid)) continue;
             client.daoObject = daoObject;
-            if (callback != null) callback.accept(ch);
+            if(callback != null) callback.accept(ch);
         }
     }
 
     public Channel getChannelFromConnectUUID(UUID connectUuid) {
-        for (Channel ch : channels) {
+        for(Channel ch : channels) {
             if (ch == null || ch.pipeline() == null) continue;
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
             if (wsHandler == null) continue;
-            if (connectUuid.equals(wsHandler.getConnectUUID())) {
+            if(connectUuid.equals(wsHandler.getConnectUUID())) {
                 return ch;
             }
         }
@@ -250,27 +251,27 @@ public class WebSocketService {
 
     public boolean kickByUserUUID(UUID userUuid, boolean isClose) {
         boolean result = false;
-        for (Channel ch : channels) {
+        for(Channel ch : channels) {
             if (ch == null || ch.pipeline() == null) continue;
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
             if (wsHandler == null) continue;
             Client client = wsHandler.getClient();
-            if (client == null || !userUuid.equals(client.uuid)) continue;
+            if(client == null || client.daoObject == null || !userUuid.equals(client.uuid)) continue;
             ExitResponse.exit(server, wsHandler, ch, ExitRequestEvent.ExitReason.SERVER);
-            if (isClose) ch.close();
+            if(isClose) ch.close();
             result = true;
         }
         return result;
     }
 
     public boolean kickByConnectUUID(UUID connectUuid, boolean isClose) {
-        for (Channel ch : channels) {
+        for(Channel ch : channels) {
             if (ch == null || ch.pipeline() == null) continue;
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
             if (wsHandler == null) continue;
-            if (connectUuid.equals(wsHandler.getConnectUUID())) {
+            if(connectUuid.equals(wsHandler.getConnectUUID())) {
                 ExitResponse.exit(server, wsHandler, ch, ExitRequestEvent.ExitReason.SERVER);
-                if (isClose) ch.close();
+                if(isClose) ch.close();
                 return true;
             }
         }
@@ -279,16 +280,16 @@ public class WebSocketService {
 
     public boolean kickByIP(String ip, boolean isClose) {
         boolean result = false;
-        for (Channel ch : channels) {
+        for(Channel ch : channels) {
             if (ch == null || ch.pipeline() == null) continue;
             WebSocketFrameHandler wsHandler = ch.pipeline().get(WebSocketFrameHandler.class);
-            if (wsHandler == null) continue;
+            if(wsHandler == null) continue;
             String clientIp;
-            if (wsHandler.context != null && wsHandler.context.ip != null) clientIp = wsHandler.context.ip;
+            if(wsHandler.context != null && wsHandler.context.ip != null) clientIp = wsHandler.context.ip;
             else clientIp = IOHelper.getIP(ch.remoteAddress());
-            if (ip.equals(clientIp)) {
+            if(ip.equals(clientIp)) {
                 ExitResponse.exit(server, wsHandler, ch, ExitRequestEvent.ExitReason.SERVER);
-                if (isClose) ch.close();
+                if(isClose) ch.close();
                 result = true;
             }
         }

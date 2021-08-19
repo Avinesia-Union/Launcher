@@ -2,12 +2,12 @@ package pro.gravit.utils;
 
 import java.util.*;
 
-public final class Version implements Comparable<Version> {
+public final class Version {
 
     public static final int MAJOR = 5;
-    public static final int MINOR = 2;
-    public static final int PATCH = 0;
-    public static final int BUILD = 1;
+    public static final int MINOR = 1;
+    public static final int PATCH = 10;
+    public static final int BUILD = 2;
     public static final Version.Type RELEASE = Type.STABLE;
     public final int major;
     public final int minor;
@@ -24,6 +24,7 @@ public final class Version implements Comparable<Version> {
         release = Type.UNKNOWN;
     }
 
+
     public Version(int major, int minor, int patch, int build) {
         this.major = major;
         this.minor = minor;
@@ -32,24 +33,13 @@ public final class Version implements Comparable<Version> {
         release = Type.UNKNOWN;
     }
 
+
     public Version(int major, int minor, int patch, int build, Type release) {
         this.major = major;
         this.minor = minor;
         this.patch = patch;
         this.build = build;
         this.release = release;
-    }
-
-    public static Version of(int major, int minor, int patch) {
-        return new Version(major, minor, patch);
-    }
-
-    public static Version of(int major, int minor, int patch, int build) {
-        return new Version(major, minor, patch, build);
-    }
-
-    public static Version of(int major, int minor, int patch, int build, Type release) {
-        return new Version(major, minor, patch, build, release);
     }
 
     public static Version getVersion() {
@@ -89,22 +79,6 @@ public final class Version implements Comparable<Version> {
 
     public String toString() {
         return String.format("%d.%d.%d-%d %s", major, minor, patch, build, getReleaseStatus());
-    }
-
-    @Override
-    public int compareTo(Version version) {
-        if (version.major != major) return Integer.compare(major, version.major);
-        if (version.minor != minor) return Integer.compare(minor, version.minor);
-        if (version.patch != patch) return Integer.compare(patch, version.patch);
-        return 0;
-    }
-
-    public boolean isUpperThan(Version version) {
-        return this.compareTo(version) > 0;
-    }
-
-    public boolean isLowerThan(Version version) {
-        return this.compareTo(version) < 0;
     }
 
 

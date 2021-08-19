@@ -7,6 +7,7 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.util.CharsetUtil;
 import pro.gravit.launchserver.socket.handlers.ContentType;
+import pro.gravit.utils.helper.LogHelper;
 import pro.gravit.utils.helper.VerifyHelper;
 
 import java.io.File;
@@ -228,7 +229,10 @@ public class FileServerHandler extends SimpleChannelInboundHandler<FullHttpReque
                     sendNotModified(ctx);
                     return;
                 }
-            } catch (UnsupportedTemporalTypeException ignored) {
+            } catch (UnsupportedTemporalTypeException e) {
+                if(LogHelper.isDebugEnabled()) {
+                    LogHelper.warning("Request access If-Modifed-Since: %s not parsed correctly", ifModifiedSince);
+                }
             }
         }
 

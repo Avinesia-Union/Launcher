@@ -1,27 +1,27 @@
 package pro.gravit.launchserver.auth.protect.hwid;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.request.secure.HardwareReportRequest;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.auth.MySQLSourceConfig;
 import pro.gravit.launchserver.socket.Client;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.*;
 
 public class MysqlHWIDProvider extends HWIDProvider {
-    private transient final Logger logger = LogManager.getLogger();
     public MySQLSourceConfig mySQLHolder;
     public double warningSpoofingLevel = -1.0;
     public double criticalCompareLevel = 1.0;
+
     public String tableHWID = "hwids";
     public String tableHWIDLog = "hwidLog";
     public String tableUsers;
     public String usersNameColumn;
     public String usersHWIDColumn;
+
     private String sqlFindByPublicKey;
     private String sqlFindByHardware;
     private String sqlCreateHardware;
@@ -39,7 +39,7 @@ public class MysqlHWIDProvider extends HWIDProvider {
         if (tableUsers != null && usersHWIDColumn != null && usersNameColumn != null) {
             sqlUpdateUsers = String.format("UPDATE %s SET `%s` = ? WHERE `%s` = ?", tableUsers, usersHWIDColumn, usersNameColumn);
         } else {
-            logger.warn("[MysqlHWIDProvider] Link to users table not configured");
+            LogHelper.warning("[MysqlHWIDProvider] Link to users table not configured");
         }
     }
 
@@ -52,7 +52,7 @@ public class MysqlHWIDProvider extends HWIDProvider {
             if (set.next()) {
                 if (set.getBoolean(11)) //isBanned
                 {
-                    throw new HWIDException("You HWID banned");
+                    throw new SecurityException("You HWID banned");
                 }
                 long id = set.getLong(10);
                 setUserHardwareId(connection, client.username, id);
@@ -61,8 +61,8 @@ public class MysqlHWIDProvider extends HWIDProvider {
                 return null;
             }
         } catch (SQLException | IOException throwables) {
-            logger.error(throwables);
-            throw new HWIDException("SQL error. Please try again later");
+            LogHelper.error(throwables);
+            throw new SecurityException("SQL error. Please try again later");
         }
     }
 
@@ -103,8 +103,8 @@ public class MysqlHWIDProvider extends HWIDProvider {
                 }
             }
         } catch (SQLException throwables) {
-            logger.error(throwables);
-            throw new HWIDException("SQL error. Please try again later");
+            LogHelper.error(throwables);
+            throw new SecurityException("SQL error. Please try again later");
         }
     }
 
@@ -120,7 +120,7 @@ public class MysqlHWIDProvider extends HWIDProvider {
                 if (result.compareLevel > criticalCompareLevel) {
                     if (set.getBoolean(11)) //isBanned
                     {
-                        throw new HWIDException("You HWID banned");
+                        throw new SecurityException("You HWID banned");
                     }
                     writeHwidLog(connection, id, publicKey);
                     changePublicKey(connection, id, publicKey);
@@ -129,8 +129,8 @@ public class MysqlHWIDProvider extends HWIDProvider {
                 }
             }
         } catch (SQLException | IOException throwables) {
-            logger.error(throwables);
-            throw new HWIDException("SQL error. Please try again later");
+            LogHelper.error(throwables);
+            throw new SecurityException("SQL error. Please try again later");
         }
         return false;
     }

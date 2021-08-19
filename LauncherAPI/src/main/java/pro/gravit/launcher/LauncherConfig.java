@@ -14,7 +14,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.security.cert.CertificateException;
 import java.security.interfaces.ECPublicKey;
-import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
@@ -29,8 +28,7 @@ public final class LauncherConfig extends StreamObject {
     @LauncherInject("launcher.port")
     public final int clientPort;
     public final LauncherTrustManager trustManager;
-    public final ECPublicKey ecdsaPublicKey;
-    public final RSAPublicKey rsaPublicKey;
+    public final ECPublicKey publicKey;
     public final Map<String, byte[]> runtime;
     @Deprecated
     public final boolean isWarningMissArchJava;
@@ -42,12 +40,8 @@ public final class LauncherConfig extends StreamObject {
     public final String secureCheckSalt;
     @LauncherInject("runtimeconfig.passwordEncryptKey")
     public final String passwordEncryptKey;
-    @LauncherInject("runtimeconfig.runtimeEncryptKey")
-    public final String runtimeEncryptKey;
     @LauncherInject("launcher.address")
-    public final String address;
-    @Deprecated
-    public ECPublicKey publicKey = null;
+    public String address;
     @LauncherInject("runtimeconfig.secretKeyClient")
     public String secretKeyClient;
     @LauncherInject("runtimeconfig.oemUnlockKey")
@@ -58,13 +52,10 @@ public final class LauncherConfig extends StreamObject {
 
     @LauncherInjectionConstructor
     public LauncherConfig(HInput input) throws IOException, InvalidKeySpecException {
-        ecdsaPublicKey = SecurityHelper.toPublicECDSAKey(input.readByteArray(SecurityHelper.CRYPTO_MAX_LENGTH));
-        rsaPublicKey = SecurityHelper.toPublicRSAKey(input.readByteArray(SecurityHelper.CRYPTO_MAX_LENGTH));
-        publicKey = ecdsaPublicKey;
+        publicKey = SecurityHelper.toPublicECKey(input.readByteArray(SecurityHelper.CRYPTO_MAX_LENGTH));
         secureCheckHash = null;
         secureCheckSalt = null;
         passwordEncryptKey = null;
-        runtimeEncryptKey = null;
         projectName = null;
         clientPort = -1;
         secretKeyClient = null;
@@ -92,12 +83,9 @@ public final class LauncherConfig extends StreamObject {
         runtime = Collections.unmodifiableMap(localResources);
     }
 
-    @Deprecated
     public LauncherConfig(String address, ECPublicKey publicKey, Map<String, byte[]> runtime, String projectName) {
         this.address = address;
         this.publicKey = publicKey;
-        this.ecdsaPublicKey = this.publicKey;
-        this.rsaPublicKey = null;
         this.runtime = Collections.unmodifiableMap(new HashMap<>(runtime));
         this.projectName = projectName;
         this.clientPort = 32148;
@@ -107,42 +95,7 @@ public final class LauncherConfig extends StreamObject {
         secureCheckSalt = null;
         secureCheckHash = null;
         passwordEncryptKey = null;
-        runtimeEncryptKey = null;
         trustManager = null;
-    }
-
-    public LauncherConfig(String address, ECPublicKey ecdsaPublicKey, RSAPublicKey rsaPublicKey, Map<String, byte[]> runtime, String projectName) {
-        this.address = address;
-        this.ecdsaPublicKey = ecdsaPublicKey;
-        this.rsaPublicKey = rsaPublicKey;
-        this.runtime = Collections.unmodifiableMap(new HashMap<>(runtime));
-        this.projectName = projectName;
-        this.clientPort = 32148;
-        guardType = "no";
-        isWarningMissArchJava = true;
-        environment = LauncherEnvironment.STD;
-        secureCheckSalt = null;
-        secureCheckHash = null;
-        passwordEncryptKey = null;
-        runtimeEncryptKey = null;
-        trustManager = null;
-    }
-
-    public LauncherConfig(String address, Map<String, byte[]> runtime, String projectName, LauncherEnvironment env, LauncherTrustManager trustManager) {
-        this.address = address;
-        this.runtime = Collections.unmodifiableMap(new HashMap<>(runtime));
-        this.projectName = projectName;
-        this.clientPort = 32148;
-        this.trustManager = trustManager;
-        this.rsaPublicKey = null;
-        this.ecdsaPublicKey = null;
-        environment = env;
-        guardType = "no";
-        isWarningMissArchJava = true;
-        secureCheckSalt = null;
-        secureCheckHash = null;
-        passwordEncryptKey = null;
-        runtimeEncryptKey = null;
     }
 
     public static void initModules(LauncherModulesManager modulesManager) {
@@ -158,8 +111,7 @@ public final class LauncherConfig extends StreamObject {
 
     @Override
     public void write(HOutput output) throws IOException {
-        output.writeByteArray(ecdsaPublicKey.getEncoded(), SecurityHelper.CRYPTO_MAX_LENGTH);
-        output.writeByteArray(rsaPublicKey.getEncoded(), SecurityHelper.CRYPTO_MAX_LENGTH);
+        output.writeByteArray(publicKey.getEncoded(), SecurityHelper.CRYPTO_MAX_LENGTH);
 
         // Write signed runtime
         Set<Map.Entry<String, byte[]>> entrySet = runtime.entrySet();

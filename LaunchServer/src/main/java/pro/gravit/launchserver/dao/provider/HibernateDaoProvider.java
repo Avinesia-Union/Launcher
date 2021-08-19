@@ -16,10 +16,6 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Deprecated from 5.2.0
- */
-@Deprecated
 public abstract class HibernateDaoProvider extends DaoProvider implements Reconfigurable, AutoCloseable {
     public String driver;
     public String url;
@@ -64,7 +60,7 @@ public abstract class HibernateDaoProvider extends DaoProvider implements Reconf
         Map<String, Command> commands = new HashMap<>();
         commands.put("getallusers", new SubCommand() {
             @Override
-            public void invoke(String... args) {
+            public void invoke(String... args) throws Exception {
                 int count = 0;
                 for (User user : userDAO.findAll()) {
                     LogHelper.subInfo("[%s] UUID: %s", user.getUsername(), user.getUuid().toString());
@@ -123,7 +119,7 @@ public abstract class HibernateDaoProvider extends DaoProvider implements Reconf
     }
 
     @Override
-    public void close() {
+    public void close() throws Exception {
         sessionFactory.close();
     }
 }

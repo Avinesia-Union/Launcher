@@ -1,8 +1,6 @@
 package pro.gravit.launchserver.manangers;
 
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
@@ -25,12 +23,15 @@ import org.bouncycastle.util.io.pem.PemWriter;
 import pro.gravit.launcher.LauncherTrustManager;
 import pro.gravit.utils.helper.IOHelper;
 import pro.gravit.utils.helper.JVMHelper;
+import pro.gravit.utils.helper.LogHelper;
 import pro.gravit.utils.helper.SecurityHelper;
 
 import java.io.*;
 import java.math.BigInteger;
-import java.net.URL;
-import java.nio.file.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.*;
 import java.security.cert.CertificateException;
@@ -47,24 +48,15 @@ import java.util.Date;
 import java.util.List;
 
 public class CertificateManager {
-    @Deprecated
     public final int validDays = 60;
-    @Deprecated
     public final int minusHours = 6;
-    private transient final Logger logger = LogManager.getLogger();
-    @Deprecated
     public X509CertificateHolder ca;
-    @Deprecated
     public AsymmetricKeyParameter caKey;
-    @Deprecated
     public X509CertificateHolder server;
-    @Deprecated
     public AsymmetricKeyParameter serverKey;
     public LauncherTrustManager trustManager;
-    @Deprecated
     public String orgName;
 
-    @Deprecated
     public X509CertificateHolder generateCertificate(String subjectName, PublicKey subjectPublicKey) throws OperatorCreationException {
         SubjectPublicKeyInfo subjectPubKeyInfo = SubjectPublicKeyInfo.getInstance(subjectPublicKey.getEncoded());
         BigInteger serial = BigInteger.valueOf(SecurityHelper.newRandom().nextLong());
@@ -84,7 +76,6 @@ public class CertificateManager {
         return v3CertGen.build(sigGen);
     }
 
-    @Deprecated
     public void generateCA() throws NoSuchAlgorithmException, IOException, OperatorCreationException, InvalidAlgorithmParameterException {
         ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp384k1");
         KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
@@ -109,7 +100,6 @@ public class CertificateManager {
         caKey = PrivateKeyFactory.createKey(pair.getPrivate().getEncoded());
     }
 
-    @Deprecated
     public KeyPair generateKeyPair() throws InvalidAlgorithmParameterException, NoSuchAlgorithmException {
         ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp384k1");
         KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
@@ -180,20 +170,9 @@ public class CertificateManager {
     public void readTrustStore(Path dir) throws IOException, CertificateException {
         if (!IOHelper.isDir(dir)) {
             Files.createDirectories(dir);
-            try {
-                URL inBuildCert = IOHelper.getResourceURL("pro/gravit/launchserver/defaults/BuildCertificate.crt");
-                try (OutputStream outputStream = IOHelper.newOutput(dir.resolve("BuildCertificate.crt"));
-                     InputStream inputStream = IOHelper.newInput(inBuildCert)) {
-                    IOHelper.transfer(inputStream, outputStream);
-                }
-            } catch (NoSuchFileException ignored) {
-
-            }
-
-        } else {
-            if (IOHelper.exists(dir.resolve("GravitCentralRootCA.crt"))) {
-                logger.warn("Found old default certificate - 'GravitCentralRootCA.crt'. Delete...");
-                Files.delete(dir.resolve("GravitCentralRootCA.crt"));
+            try (OutputStream outputStream = IOHelper.newOutput(dir.resolve("GravitCentralRootCA.crt"));
+                 InputStream inputStream = IOHelper.newInput(IOHelper.getResourceURL("pro/gravit/launchserver/defaults/GravitCentralRootCA.crt"))) {
+                IOHelper.transfer(inputStream, outputStream);
             }
         }
         List<X509Certificate> certificates = new ArrayList<>();
@@ -222,7 +201,7 @@ public class CertificateManager {
             if (mode == LauncherTrustManager.CheckMode.EXCEPTION_IN_NOT_SIGNED)
                 throw new SecurityException(String.format("Class %s not signed", clazz.getName()));
             else if (mode == LauncherTrustManager.CheckMode.WARN_IN_NOT_SIGNED)
-                logger.warn("Class {} not signed", clazz.getName());
+                LogHelper.warning("Class %s not signed", clazz.getName());
             return;
         }
         try {
@@ -231,7 +210,6 @@ public class CertificateManager {
             throw new SecurityException(e);
         }
     }
-
     public LauncherTrustManager.CheckClassResult checkClass(Class<?> clazz) {
         X509Certificate[] certificates = JVMHelper.getCertificates(clazz);
         return trustManager.checkCertificates(certificates, trustManager::stdCertificateChecker);

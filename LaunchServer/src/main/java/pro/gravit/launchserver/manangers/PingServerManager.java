@@ -9,6 +9,27 @@ import java.util.Map;
 
 public class PingServerManager {
     public static final long REPORT_EXPIRED_TIME = 20 * 1000;
+
+    public static class ServerInfoEntry {
+        public PingServerReportRequest.PingServerReport lastReport;
+        public long lastReportTime;
+        public final ClientProfile profile;
+
+        public ServerInfoEntry(ClientProfile profile, PingServerReportRequest.PingServerReport lastReport) {
+            this.lastReport = lastReport;
+            this.profile = profile;
+            this.lastReportTime = System.currentTimeMillis();
+        }
+
+        public ServerInfoEntry(ClientProfile profile) {
+            this.profile = profile;
+        }
+
+        public boolean isExpired() {
+            return System.currentTimeMillis() - lastReportTime > REPORT_EXPIRED_TIME;
+        }
+    }
+
     public final Map<String, ServerInfoEntry> map = new HashMap<>();
     private final LaunchServer server;
 
@@ -35,26 +56,6 @@ public class PingServerManager {
             entry.lastReportTime = System.currentTimeMillis();
             entry.lastReport = report;
             return true;
-        }
-    }
-
-    public static class ServerInfoEntry {
-        public final ClientProfile profile;
-        public PingServerReportRequest.PingServerReport lastReport;
-        public long lastReportTime;
-
-        public ServerInfoEntry(ClientProfile profile, PingServerReportRequest.PingServerReport lastReport) {
-            this.lastReport = lastReport;
-            this.profile = profile;
-            this.lastReportTime = System.currentTimeMillis();
-        }
-
-        public ServerInfoEntry(ClientProfile profile) {
-            this.profile = profile;
-        }
-
-        public boolean isExpired() {
-            return System.currentTimeMillis() - lastReportTime > REPORT_EXPIRED_TIME;
         }
     }
 }

@@ -7,25 +7,15 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import java.lang.reflect.Type;
-import java.util.Base64;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Locale;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class CommonHelper {
 
-    private static ScriptEngineFactory nashornFactory;
+    public static final ScriptEngineManager scriptManager = new ScriptEngineManager();
 
-    static {
-        try {
-            ScriptEngineManager scriptManager = new ScriptEngineManager();
-            nashornFactory = getEngineFactories(scriptManager);
-        } catch (Throwable e) {
-            nashornFactory = null;
-        }
-    }
+    public static final ScriptEngineFactory nashornFactory = getEngineFactories(scriptManager);
 
     private CommonHelper() {
     }
@@ -58,10 +48,7 @@ public final class CommonHelper {
     }
 
     public static ScriptEngine newScriptEngine() {
-        if (nashornFactory == null) {
-            throw new UnsupportedOperationException("ScriptEngine not supported");
-        }
-        return nashornFactory.getScriptEngine();
+        return Objects.requireNonNull(nashornFactory).getScriptEngine();
     }
 
     public static Thread newThread(String name, boolean daemon, Runnable runnable) {

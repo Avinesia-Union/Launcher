@@ -29,7 +29,6 @@ public class SecurityReportRequestEvent extends RequestEvent {
     public enum ReportAction {
         NONE,
         LOGOUT,
-        TOKEN_EXPIRED,
         EXIT,
         CRASH,
         OTHER

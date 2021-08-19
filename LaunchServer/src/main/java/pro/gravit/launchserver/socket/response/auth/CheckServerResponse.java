@@ -1,17 +1,15 @@
 package pro.gravit.launchserver.socket.response.auth;
 
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.events.request.CheckServerRequestEvent;
 import pro.gravit.launchserver.auth.AuthException;
-import pro.gravit.launchserver.manangers.AuthManager;
 import pro.gravit.launchserver.socket.Client;
 import pro.gravit.launchserver.socket.response.SimpleResponse;
+import pro.gravit.launchserver.socket.response.profile.ProfileByUUIDResponse;
 import pro.gravit.utils.HookException;
+import pro.gravit.utils.helper.LogHelper;
 
 public class CheckServerResponse extends SimpleResponse {
-    private transient final Logger logger = LogManager.getLogger();
     public String serverID;
     public String username;
     public String client;
@@ -30,17 +28,17 @@ public class CheckServerResponse extends SimpleResponse {
         CheckServerRequestEvent result = new CheckServerRequestEvent();
         try {
             server.authHookManager.checkServerHook.hook(this, pClient);
-            AuthManager.CheckServerReport report = server.authManager.checkServer(pClient, username, serverID);
-            if (report != null) {
-                result.playerProfile = report.playerProfile;
-                result.uuid = report.uuid;
-                logger.debug("checkServer: {} uuid: {} serverID: {}", result.playerProfile == null ? null : result.playerProfile.username, result.uuid, serverID);
+            result.uuid = pClient.auth.handler.checkServer(username, serverID);
+            if (result.uuid != null)
+                result.playerProfile = ProfileByUUIDResponse.getProfile(result.uuid, username, client, pClient.auth.textureProvider);
+            if (LogHelper.isDebugEnabled()) {
+                LogHelper.debug("checkServer: %s uuid: %s serverID: %s", result.playerProfile.username, result.uuid.toString(), serverID);
             }
         } catch (AuthException | HookException e) {
             sendError(e.getMessage());
             return;
         } catch (Exception e) {
-            logger.error("Internal authHandler error", e);
+            LogHelper.error(e);
             sendError("Internal authHandler error");
             return;
         }

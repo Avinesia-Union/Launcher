@@ -1,14 +1,14 @@
 package pro.gravit.launcher.client;
 
-import pro.gravit.launcher.ClientLauncherWrapper;
 import pro.gravit.launcher.Launcher;
 import pro.gravit.launcher.LauncherTrustManager;
 import pro.gravit.launcher.modules.LauncherModule;
 import pro.gravit.launcher.modules.impl.SimpleModuleManager;
 
 import java.nio.file.Path;
+import java.util.Collection;
 
-public final class ClientModuleManager extends SimpleModuleManager {
+public class ClientModuleManager extends SimpleModuleManager {
     public ClientModuleManager() {
         super(null, null, Launcher.getConfig().trustManager);
     }
@@ -24,6 +24,11 @@ public final class ClientModuleManager extends SimpleModuleManager {
     }
 
     @Override
+    public LauncherModule loadModule(Path file) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public LauncherModule loadModule(LauncherModule module) {
         return super.loadModule(module);
     }
@@ -33,10 +38,10 @@ public final class ClientModuleManager extends SimpleModuleManager {
         return result.type == LauncherTrustManager.CheckClassResultType.SUCCESS;
     }
 
-    public void callWrapper(ClientLauncherWrapper.ClientLauncherWrapperContext context) {
+    public void callWrapper(ProcessBuilder processBuilder, Collection<String> jvmArgs) {
         for (LauncherModule module : modules) {
             if (module instanceof ClientWrapperModule) {
-                ((ClientWrapperModule) module).wrapperPhase(context);
+                ((ClientWrapperModule) module).wrapperPhase(processBuilder, jvmArgs);
             }
         }
     }

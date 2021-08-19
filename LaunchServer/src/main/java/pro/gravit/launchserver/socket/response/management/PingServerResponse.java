@@ -20,7 +20,7 @@ public class PingServerResponse extends SimpleResponse {
     }
 
     @Override
-    public void execute(ChannelHandlerContext ctx, Client client) {
+    public void execute(ChannelHandlerContext ctx, Client client) throws Exception {
         Map<String, PingServerReportRequest.PingServerReport> map = new HashMap<>();
         if (serverNames == null) {
             server.pingServerManager.map.forEach((name, entity) -> {

@@ -1,18 +1,13 @@
 package pro.gravit.launchserver.manangers;
 
 import com.google.gson.GsonBuilder;
-import pro.gravit.launcher.events.request.GetAvailabilityAuthRequestEvent;
 import pro.gravit.launcher.managers.GsonManager;
 import pro.gravit.launcher.modules.events.PreGsonPhase;
 import pro.gravit.launcher.profiles.optional.actions.OptionalAction;
-import pro.gravit.launcher.profiles.optional.triggers.OptionalTrigger;
 import pro.gravit.launcher.request.JsonResultSerializeAdapter;
 import pro.gravit.launcher.request.WebSocketEvent;
 import pro.gravit.launcher.request.auth.AuthRequest;
-import pro.gravit.launcher.request.auth.GetAvailabilityAuthRequest;
-import pro.gravit.launchserver.auth.core.AuthCoreProvider;
 import pro.gravit.launchserver.auth.handler.AuthHandler;
-import pro.gravit.launchserver.auth.password.PasswordVerifier;
 import pro.gravit.launchserver.auth.protect.ProtectHandler;
 import pro.gravit.launchserver.auth.protect.hwid.HWIDProvider;
 import pro.gravit.launchserver.auth.provider.AuthProvider;
@@ -34,24 +29,19 @@ public class LaunchServerGsonManager extends GsonManager {
     }
 
     @Override
-    @SuppressWarnings("deprecation")
     public void registerAdapters(GsonBuilder builder) {
         super.registerAdapters(builder);
         builder.registerTypeAdapter(AuthProvider.class, new UniversalJsonAdapter<>(AuthProvider.providers));
         builder.registerTypeAdapter(TextureProvider.class, new UniversalJsonAdapter<>(TextureProvider.providers));
         builder.registerTypeAdapter(AuthHandler.class, new UniversalJsonAdapter<>(AuthHandler.providers));
-        builder.registerTypeAdapter(AuthCoreProvider.class, new UniversalJsonAdapter<>(AuthCoreProvider.providers));
-        builder.registerTypeAdapter(PasswordVerifier.class, new UniversalJsonAdapter<>(PasswordVerifier.providers));
         builder.registerTypeAdapter(Component.class, new UniversalJsonAdapter<>(Component.providers));
         builder.registerTypeAdapter(ProtectHandler.class, new UniversalJsonAdapter<>(ProtectHandler.providers));
         builder.registerTypeAdapter(DaoProvider.class, new UniversalJsonAdapter<>(DaoProvider.providers));
         builder.registerTypeAdapter(WebSocketServerResponse.class, new UniversalJsonAdapter<>(WebSocketService.providers, UnknownResponse.class));
         builder.registerTypeAdapter(WebSocketEvent.class, new JsonResultSerializeAdapter());
         builder.registerTypeAdapter(AuthRequest.AuthPasswordInterface.class, new UniversalJsonAdapter<>(AuthRequest.providers));
-        builder.registerTypeAdapter(GetAvailabilityAuthRequestEvent.AuthAvailabilityDetails.class, new UniversalJsonAdapter<>(GetAvailabilityAuthRequest.providers));
         builder.registerTypeAdapter(HWIDProvider.class, new UniversalJsonAdapter<>(HWIDProvider.providers));
         builder.registerTypeAdapter(OptionalAction.class, new UniversalJsonAdapter<>(OptionalAction.providers));
-        builder.registerTypeAdapter(OptionalTrigger.class, new UniversalJsonAdapter<>(OptionalTrigger.providers));
         builder.registerTypeAdapter(SessionStorage.class, new UniversalJsonAdapter<>(SessionStorage.providers));
         modulesManager.invokeEvent(new PreGsonPhase(builder));
         //ClientWebSocketService.appendTypeAdapters(builder);

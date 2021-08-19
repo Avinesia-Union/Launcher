@@ -17,7 +17,6 @@ public final class PlayerProfile extends StreamObject {
     public final Texture skin, cloak;
 
 
-    @Deprecated
     public PlayerProfile(HInput input) throws IOException {
         uuid = input.readUUID();
         username = VerifyHelper.verifyUsername(input.readString(64));
@@ -42,7 +41,6 @@ public final class PlayerProfile extends StreamObject {
     }
 
     @Override
-    @Deprecated
     public void write(HOutput output) throws IOException {
         output.writeUUID(uuid);
         output.writeString(username, 64);

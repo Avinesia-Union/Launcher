@@ -3,12 +3,11 @@ package pro.gravit.launchserver.binary.tasks.exe;
 import net.sf.launch4j.Builder;
 import net.sf.launch4j.Log;
 import net.sf.launch4j.config.*;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.binary.tasks.LauncherBuildTask;
 import pro.gravit.utils.Version;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -19,7 +18,6 @@ public class Launch4JTask implements LauncherBuildTask, BuildExeMainTask {
     private static final int BUILD = Version.getVersion().build;
     private final Path faviconFile;
     private final LaunchServer server;
-    private transient final Logger logger = LogManager.getLogger();
 
     public Launch4JTask(LaunchServer launchServer) {
         this.server = launchServer;
@@ -37,7 +35,7 @@ public class Launch4JTask implements LauncherBuildTask, BuildExeMainTask {
 
     @Override
     public Path process(Path inputFile) throws IOException {
-        logger.info("Building launcher EXE binary file (Using Launch4J)");
+        LogHelper.info("Building launcher EXE binary file (Using Launch4J)");
         Path output = setConfig();
 
         // Set favicon path
@@ -46,7 +44,7 @@ public class Launch4JTask implements LauncherBuildTask, BuildExeMainTask {
             config.setIcon(faviconFile.toFile());
         else {
             config.setIcon(null);
-            logger.warn("Missing favicon.ico file");
+            LogHelper.warning("Missing favicon.ico file");
         }
 
         // Start building
@@ -116,11 +114,10 @@ public class Launch4JTask implements LauncherBuildTask, BuildExeMainTask {
 
     private final static class Launch4JLog extends Log {
         private static final Launch4JLog INSTANCE = new Launch4JLog();
-        private static final Logger logger = LogManager.getLogger();
 
         @Override
         public void append(String s) {
-            logger.info(s);
+            LogHelper.subInfo(s);
         }
 
         @Override

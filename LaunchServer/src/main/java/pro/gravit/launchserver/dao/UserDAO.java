@@ -3,7 +3,6 @@ package pro.gravit.launchserver.dao;
 import java.util.List;
 import java.util.UUID;
 
-@Deprecated
 public interface UserDAO {
     User findById(int id);
 

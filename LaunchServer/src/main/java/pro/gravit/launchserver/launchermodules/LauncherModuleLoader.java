@@ -1,14 +1,11 @@
 package pro.gravit.launchserver.launchermodules;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.Launcher;
-import pro.gravit.launcher.LauncherTrustManager;
-import pro.gravit.launcher.modules.LauncherModule;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.asm.InjectClassAcceptor;
 import pro.gravit.launchserver.binary.tasks.MainBuildTask;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -30,7 +27,6 @@ public class LauncherModuleLoader {
     public final List<ModuleEntity> launcherModules = new ArrayList<>();
     public final Path modulesDir;
     private final LaunchServer server;
-    private transient final Logger logger = LogManager.getLogger();
 
     public LauncherModuleLoader(LaunchServer server) {
         this.server = server;
@@ -42,7 +38,7 @@ public class LauncherModuleLoader {
             try {
                 Files.createDirectories(modulesDir);
             } catch (IOException e) {
-                logger.error(e);
+                LogHelper.error(e);
             }
         }
         server.commandHandler.registerCommand("syncLauncherModules", new SyncLauncherModulesCommand(this));
@@ -56,14 +52,14 @@ public class LauncherModuleLoader {
         });
         mainTask.postBuildHook.registerHook((buildContext) -> {
             for (ModuleEntity e : launcherModules) {
-                logger.debug("Put {} launcher module", e.path.toString());
+                LogHelper.debug("Put %s launcher module", e.path.toString());
                 buildContext.pushJarFile(e.path, (en) -> false, (en) -> true);
             }
         });
         try {
             syncModules();
         } catch (IOException e) {
-            logger.error(e);
+            LogHelper.error(e);
         }
     }
 
@@ -72,25 +68,8 @@ public class LauncherModuleLoader {
         IOHelper.walk(modulesDir, new ModulesVisitor(), false);
     }
 
-    public void addClassFieldsToProperties(Map<String, Object> propertyMap, String prefix, Object object, Class<?> classOfObject) throws IllegalAccessException {
-        Field[] fields = classOfObject.getFields();
-        for (Field field : fields) {
-            if ((field.getModifiers() & Modifier.STATIC) != 0) continue;
-            Object obj = field.get(object);
-            String propertyName = prefix.concat(".").concat(field.getName().toLowerCase(Locale.US));
-            if (InjectClassAcceptor.isSerializableValue(obj)) {
-                logger.trace("Property name {}", propertyName);
-                propertyMap.put(propertyName, obj);
-            } else {
-                //Try recursive add fields
-                addClassFieldsToProperties(propertyMap, propertyName, obj, obj.getClass());
-            }
-        }
-    }
-
-    public static class ModuleEntity {
+    static class ModuleEntity {
         public Path path;
-        public LauncherTrustManager.CheckClassResult checkResult;
         public String moduleMainClass;
         public String moduleConfigClass;
         public String moduleConfigName;
@@ -104,45 +83,33 @@ public class LauncherModuleLoader {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
             if (file.toFile().getName().endsWith(".jar"))
                 try (JarFile f = new JarFile(file.toFile())) {
                     Attributes attributes = f.getManifest().getMainAttributes();
                     String mainClass = attributes.getValue("Module-Main-Class");
                     if (mainClass == null) {
-                        logger.error("In module {} MainClass not found", file.toString());
+                        LogHelper.error("In module %s MainClass not found", file.toString());
                     } else {
-                        if (classLoader == null)
-                            classLoader = new LauncherModuleClassLoader(server.modulesManager.getModuleClassLoader());
-                        classLoader.addURL(file.toUri().toURL());
                         ModuleEntity entity = new ModuleEntity();
                         entity.path = file;
                         entity.moduleMainClass = mainClass;
-                        try {
-                            Class<? extends LauncherModule> mainClazz = (Class<? extends LauncherModule>) classLoader.loadClass(entity.moduleMainClass);
-                            entity.checkResult = server.modulesManager.checkModuleClass(mainClazz);
-                        } catch (Throwable e) {
-                            if (e instanceof ClassNotFoundException || e instanceof NoClassDefFoundError) {
-                                logger.error("Module-MainClass in module {} incorrect", file.toString());
-                            } else {
-                                logger.error(e);
-                            }
-                            return super.visitFile(file, attrs);
-                        }
                         entity.moduleConfigClass = attributes.getValue("Module-Config-Class");
                         if (entity.moduleConfigClass != null) {
                             entity.moduleConfigName = attributes.getValue("Module-Config-Name");
                             if (entity.moduleConfigName == null) {
-                                logger.warn("Module-Config-Name in module {} null. Module not configured", file.toString());
+                                LogHelper.warning("Module-Config-Name in module %s null. Module not configured", file.toString());
                             } else {
                                 try {
+                                    if (classLoader == null)
+                                        classLoader = new LauncherModuleClassLoader(server.modulesManager.getModuleClassLoader());
+                                    classLoader.addURL(file.toUri().toURL());
                                     Class<?> clazz = classLoader.loadClass(entity.moduleConfigClass);
                                     Path configPath = server.modulesManager.getConfigManager().getModuleConfig(entity.moduleConfigName);
                                     Object defaultConfig = MethodHandles.publicLookup().findStatic(clazz, "getDefault", MethodType.methodType(Object.class)).invoke();
                                     Object targetConfig;
                                     if (!Files.exists(configPath)) {
-                                        logger.debug("Write default config for module {} to {}", file.toString(), configPath.toString());
+                                        LogHelper.debug("Write default config for module %s to %s", file.toString(), configPath.toString());
                                         try (Writer writer = IOHelper.newWriter(configPath)) {
                                             Launcher.gsonManager.configGson.toJson(defaultConfig, writer);
                                         }
@@ -152,10 +119,19 @@ public class LauncherModuleLoader {
                                             targetConfig = Launcher.gsonManager.configGson.fromJson(reader, clazz);
                                         }
                                     }
+                                    //Field[] fields = clazz.getFields();
+                                    //for (Field field : fields) {
+                                    //    if ((field.getModifiers() & Modifier.STATIC) != 0) continue;
+                                    //    Object obj = field.get(targetConfig);
+                                    //    String configPropertyName = "modules.".concat(entity.moduleConfigName.toLowerCase()).concat(".").concat(field.getName().toLowerCase());
+                                    //    if (entity.propertyMap == null) entity.propertyMap = new HashMap<>();
+                                    //    LogHelper.dev("Property name %s", configPropertyName);
+                                    //    entity.propertyMap.put(configPropertyName, obj);
+                                    //}
                                     if (entity.propertyMap == null) entity.propertyMap = new HashMap<>();
                                     addClassFieldsToProperties(entity.propertyMap, "modules.".concat(entity.moduleConfigName.toLowerCase()), targetConfig, clazz);
                                 } catch (Throwable e) {
-                                    logger.error(e);
+                                    LogHelper.error(e);
                                 }
                             }
                         }
@@ -163,6 +139,22 @@ public class LauncherModuleLoader {
                     }
                 }
             return super.visitFile(file, attrs);
+        }
+    }
+
+    public void addClassFieldsToProperties(Map<String, Object> propertyMap, String prefix, Object object, Class<?> classOfObject) throws IllegalAccessException {
+        Field[] fields = classOfObject.getFields();
+        for (Field field : fields) {
+            if ((field.getModifiers() & Modifier.STATIC) != 0) continue;
+            Object obj = field.get(object);
+            String propertyName = prefix.concat(".").concat(field.getName().toLowerCase(Locale.US));
+            if (InjectClassAcceptor.isSerializableValue(obj)) {
+                LogHelper.dev("Property name %s", propertyName);
+                propertyMap.put(propertyName, obj);
+            } else {
+                //Try recursive add fields
+                addClassFieldsToProperties(propertyMap, propertyName, obj, obj.getClass());
+            }
         }
     }
 }

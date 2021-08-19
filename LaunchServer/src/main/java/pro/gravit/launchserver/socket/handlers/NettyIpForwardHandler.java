@@ -6,6 +6,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.ReferenceCounted;
 import pro.gravit.launchserver.socket.NettyConnectContext;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.util.List;
 
@@ -35,8 +36,11 @@ public class NettyIpForwardHandler extends MessageToMessageDecoder<HttpRequest> 
             realIP = headers.get("X-Real-IP");
         }
         if (realIP != null) {
+            if (LogHelper.isDevEnabled()) {
+                LogHelper.dev("Real IP address %s", realIP);
+            }
             context.ip = realIP;
-        }
+        } else LogHelper.error("IpForwarding error. Headers not found");
         out.add(msg);
     }
 }

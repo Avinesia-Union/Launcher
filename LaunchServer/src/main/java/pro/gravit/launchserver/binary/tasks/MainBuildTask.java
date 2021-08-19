@@ -1,7 +1,5 @@
 package pro.gravit.launchserver.binary.tasks;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Type;
@@ -17,6 +15,7 @@ import pro.gravit.launchserver.asm.SafeClassWriter;
 import pro.gravit.launchserver.binary.BuildContext;
 import pro.gravit.utils.HookException;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 import pro.gravit.utils.helper.SecurityHelper;
 
 import java.io.IOException;
@@ -29,13 +28,12 @@ import java.util.zip.ZipOutputStream;
 
 public class MainBuildTask implements LauncherBuildTask {
     public final ClassMetadataReader reader;
+    private final LaunchServer server;
     public final Set<String> blacklist = new HashSet<>();
     public final List<Transformer> transformers = new ArrayList<>();
     public final IOHookSet<BuildContext> preBuildHook = new IOHookSet<>();
     public final IOHookSet<BuildContext> postBuildHook = new IOHookSet<>();
     public final Map<String, Object> properties = new HashMap<>();
-    private final LaunchServer server;
-    private transient final Logger logger = LogManager.getLogger();
 
     public MainBuildTask(LaunchServer srv) {
         server = srv;
@@ -59,22 +57,22 @@ public class MainBuildTask implements LauncherBuildTask {
             properties.put("launcher.modules", context.clientModules.stream().map(e -> Type.getObjectType(e.replace('.', '/'))).collect(Collectors.toList()));
             postInitProps();
             reader.getCp().add(new JarFile(inputJar.toFile()));
-            for (Path e : server.launcherBinary.coreLibs) {
-                reader.getCp().add(new JarFile(e.toFile()));
-            }
-            context.pushJarFile(inputJar, (e) -> blacklist.contains(e.getName()) || e.getName().startsWith("pro/gravit/launcher/debug/"), (e) -> true);
+            server.launcherBinary.coreLibs.forEach(e -> {
+                try {
+                    reader.getCp().add(new JarFile(e.toFile()));
+                } catch (IOException e1) {
+                    LogHelper.error(e1);
+                }
+            });
+            context.pushJarFile(inputJar, (e) -> blacklist.contains(e.getName()), (e) -> true);
 
             // map for guard
             Map<String, byte[]> runtime = new HashMap<>(256);
             // Write launcher guard dir
-            if (server.config.launcher.encryptRuntime) {
-                context.pushEncryptedDir(server.launcherBinary.runtimeDir, Launcher.RUNTIME_DIR, server.runtime.runtimeEncryptKey, runtime, false);
-            } else {
-                context.pushDir(server.launcherBinary.runtimeDir, Launcher.RUNTIME_DIR, runtime, false);
-            }
+            context.pushDir(server.launcherBinary.runtimeDir, Launcher.RUNTIME_DIR, runtime, false);
             context.pushDir(server.launcherBinary.guardDir, Launcher.GUARD_DIR, runtime, false);
 
-            LauncherConfig launcherConfig = new LauncherConfig(server.config.netty.address, server.keyAgreementManager.ecdsaPublicKey, server.keyAgreementManager.rsaPublicKey, runtime, server.config.projectName);
+            LauncherConfig launcherConfig = new LauncherConfig(server.config.netty.address, server.publicKey, runtime, server.config.projectName);
             context.pushFile(Launcher.CONFIG_FILE, launcherConfig);
             postBuildHook.hook(context);
         }
@@ -87,7 +85,7 @@ public class MainBuildTask implements LauncherBuildTask {
             try {
                 return e.getEncoded();
             } catch (CertificateEncodingException e2) {
-                logger.error("Certificate encoding failed", e2);
+                LogHelper.error(e2);
                 return new byte[0];
             }
         }).collect(Collectors.toList());
@@ -111,11 +109,6 @@ public class MainBuildTask implements LauncherBuildTask {
         properties.put("launcher.guardType", server.config.launcher.guardType);
         properties.put("launchercore.env", server.config.env);
         properties.put("launcher.memory", server.config.launcher.memoryLimit);
-        if (server.config.launcher.encryptRuntime) {
-            if (server.runtime.runtimeEncryptKey == null)
-                server.runtime.runtimeEncryptKey = SecurityHelper.randomStringToken();
-            properties.put("runtimeconfig.runtimeEncryptKey", server.runtime.runtimeEncryptKey);
-        }
         properties.put("launcher.certificatePinning", server.config.launcher.certificatePinning);
         properties.put("runtimeconfig.passwordEncryptKey", server.runtime.passwordEncryptKey);
         String launcherSalt = SecurityHelper.randomStringToken();

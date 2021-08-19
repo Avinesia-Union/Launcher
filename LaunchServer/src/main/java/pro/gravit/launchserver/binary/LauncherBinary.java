@@ -11,9 +11,10 @@ public abstract class LauncherBinary extends BinaryPipeline {
     public final LaunchServer server;
     public final Path syncBinaryFile;
     private volatile byte[] digest;
+    private volatile byte[] sign;
 
     protected LauncherBinary(LaunchServer server, Path binaryFile, String nameFormat) {
-        super(server.tmpDir.resolve("build"), nameFormat);
+        super(server.dir.resolve("build"), nameFormat);
         this.server = server;
         syncBinaryFile = binaryFile;
     }
@@ -34,12 +35,17 @@ public abstract class LauncherBinary extends BinaryPipeline {
         return digest;
     }
 
+    public final byte[] getSign() {
+        return sign;
+    }
+
     public void init() {
     }
 
     public final boolean sync() throws IOException {
         boolean exists = exists();
         digest = exists ? SecurityHelper.digest(SecurityHelper.DigestAlgorithm.SHA512, IOHelper.read(syncBinaryFile)) : null;
+        sign = exists ? SecurityHelper.sign(IOHelper.read(syncBinaryFile), server.privateKey) : null;
 
         return exists;
     }

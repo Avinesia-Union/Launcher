@@ -22,7 +22,6 @@ public final class AuthRequest extends Request<AuthRequestEvent> implements WebS
     @LauncherNetworkAPI
     private final ConnectTypes authType;
 
-    @Deprecated
     public AuthRequest(String login, byte[] password) {
         this.login = VerifyHelper.verify(login, VerifyHelper.NOT_EMPTY, "Login can't be empty");
         this.password = new AuthECPassword(password.clone());
@@ -31,7 +30,7 @@ public final class AuthRequest extends Request<AuthRequestEvent> implements WebS
         authType = ConnectTypes.CLIENT;
     }
 
-    @Deprecated
+
     public AuthRequest(String login, byte[] password, String auth_id) {
         this.login = VerifyHelper.verify(login, VerifyHelper.NOT_EMPTY, "Login can't be empty");
         this.password = new AuthECPassword(password.clone());
@@ -40,7 +39,6 @@ public final class AuthRequest extends Request<AuthRequestEvent> implements WebS
         authType = ConnectTypes.CLIENT;
     }
 
-    @Deprecated
     public AuthRequest(String login, byte[] encryptedPassword, String auth_id, ConnectTypes authType) {
         this.login = login;
         this.password = new AuthECPassword(encryptedPassword.clone());
@@ -65,19 +63,13 @@ public final class AuthRequest extends Request<AuthRequestEvent> implements WebS
         this.authType = authType;
     }
 
-    @SuppressWarnings("deprecation")
     public static void registerProviders() {
         if (!registerProviders) {
             providers.register("plain", AuthPlainPassword.class);
-            providers.register("rsa2", AuthRSAPassword.class);
             providers.register("rsa", AuthECPassword.class);
-            providers.register("aes", AuthAESPassword.class);
             providers.register("2fa", Auth2FAPassword.class);
-            providers.register("multi", AuthMultiPassword.class);
             providers.register("signature", AuthSignaturePassword.class);
             providers.register("totp", AuthTOTPPassword.class);
-            providers.register("oauth", AuthOAuthPassword.class);
-            providers.register("code", AuthCodePassword.class);
             registerProviders = true;
         }
     }
@@ -99,9 +91,5 @@ public final class AuthRequest extends Request<AuthRequestEvent> implements WebS
 
     public interface AuthPasswordInterface {
         boolean check();
-
-        default boolean isAllowSave() {
-            return false;
-        }
     }
 }

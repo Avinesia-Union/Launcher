@@ -38,8 +38,10 @@ public final class JARLauncherBinary extends LauncherBinary {
         tasks.add(new PrepareBuildTask(server));
         if (!server.config.sign.enabled) tasks.add(new CertificateAutogenTask(server));
         tasks.add(new MainBuildTask(server));
-        tasks.add(new AttachJarsTask(server));
+        if (server.config.launcher.attachLibraryBeforeProGuard) tasks.add(new AttachJarsTask(server));
+        tasks.add(new ProGuardBuildTask(server));
         tasks.add(new AdditionalFixesApplyTask(server));
+        if (!server.config.launcher.attachLibraryBeforeProGuard) tasks.add(new AttachJarsTask(server));
         if (server.config.launcher.compress) tasks.add(new CompressBuildTask(server));
         tasks.add(new SignJarTask(server.config.sign, server));
     }

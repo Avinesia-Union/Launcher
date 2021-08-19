@@ -16,7 +16,6 @@ import java.util.function.BiConsumer;
 
 public class OptionalFile {
     @LauncherNetworkAPI
-    @Deprecated
     public long permissions = 0L;
     @LauncherNetworkAPI
     @Deprecated
@@ -35,9 +34,6 @@ public class OptionalFile {
     @LauncherNetworkAPI
     public String info;
     @LauncherNetworkAPI
-    public List<pro.gravit.launcher.profiles.optional.triggers.OptionalTrigger> triggersList;
-    @LauncherNetworkAPI
-    @Deprecated
     public OptionalTrigger[] triggers;
     @LauncherNetworkAPI
     public OptionalDepend[] dependenciesFile;
@@ -53,10 +49,8 @@ public class OptionalFile {
     public boolean isPreset;
     @Deprecated
     public transient Set<OptionalFile> dependenciesCount;
-    @Deprecated
     private volatile transient Collection<BiConsumer<OptionalFile, Boolean>> watchList = null;
 
-    @Deprecated
     public static OptionalType readType(HInput input) throws IOException {
         int t = input.readInt();
         OptionalType type;
@@ -93,7 +87,6 @@ public class OptionalFile {
         return Objects.hash(name);
     }
 
-    @Deprecated
     public OptionalType getType() {
         return OptionalType.FILE;
     }
@@ -110,7 +103,6 @@ public class OptionalFile {
         return mark;
     }
 
-    @Deprecated
     public long getPermissions() {
         return permissions;
     }
@@ -136,25 +128,21 @@ public class OptionalFile {
         }
     }
 
-    @Deprecated
     public void registerWatcher(BiConsumer<OptionalFile, Boolean> watcher) {
         if (watchList == null) watchList = ConcurrentHashMap.newKeySet();
         watchList.add(watcher);
     }
 
-    @Deprecated
     public void removeWatcher(BiConsumer<OptionalFile, Boolean> watcher) {
         if (watchList == null) return;
         watchList.remove(watcher);
     }
 
-    @Deprecated
     public void clearAllWatchers() {
         if (watchList == null) return;
         watchList.clear();
     }
 
-    @Deprecated
     public void watchEvent(boolean isMark) {
         if (watchList == null) return;
         watchList.forEach((e) -> e.accept(this, isMark));

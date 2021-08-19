@@ -1,12 +1,9 @@
 package pro.gravit.launchserver.socket;
 
 import io.netty.util.concurrent.DefaultThreadFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import pro.gravit.utils.helper.LogHelper;
 
 public class NettyThreadFactory extends DefaultThreadFactory {
-    private transient final Logger logger = LogManager.getLogger();
-
     public NettyThreadFactory(String poolName) {
         super(poolName);
     }
@@ -15,10 +12,8 @@ public class NettyThreadFactory extends DefaultThreadFactory {
     protected Thread newThread(Runnable r, String name) {
         Thread thread = super.newThread(r, name);
         thread.setUncaughtExceptionHandler((th, e) -> {
-            if (e.getMessage().contains("Connection reset by peer")) {
-                return;
-            }
-            logger.error("Netty exception", e);
+            if (LogHelper.isDebugEnabled())
+                LogHelper.error(e);
         });
         return thread;
     }

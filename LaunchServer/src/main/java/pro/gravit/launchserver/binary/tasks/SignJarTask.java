@@ -1,7 +1,5 @@
 package pro.gravit.launchserver.binary.tasks;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.bouncycastle.cms.CMSException;
 import org.bouncycastle.cms.CMSSignedDataGenerator;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -10,6 +8,7 @@ import pro.gravit.launchserver.binary.SignerJar;
 import pro.gravit.launchserver.config.LaunchServerConfig;
 import pro.gravit.launchserver.helper.SignHelper;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +25,6 @@ import java.util.zip.ZipOutputStream;
 
 public class SignJarTask implements LauncherBuildTask {
 
-    private transient static final Logger logger = LogManager.getLogger();
     private final LaunchServerConfig.JarSignerConf config;
     private final LaunchServer srv;
 
@@ -41,7 +39,7 @@ public class SignJarTask implements LauncherBuildTask {
                     config.keyAlias, config.signAlgo, config.keyPass);
         } catch (CertificateEncodingException | UnrecoverableKeyException | KeyStoreException
                 | OperatorCreationException | NoSuchAlgorithmException | CMSException e) {
-            logger.error("Create signedDataGenerator failed", e);
+            LogHelper.error(e);
             return null;
         }
     }

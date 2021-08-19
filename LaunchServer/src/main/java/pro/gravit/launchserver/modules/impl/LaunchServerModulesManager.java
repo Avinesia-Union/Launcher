@@ -10,8 +10,6 @@ import pro.gravit.utils.helper.LogHelper;
 import java.nio.file.Path;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class LaunchServerModulesManager extends SimpleModuleManager {
     public final LaunchServerCoreModule coreModule;
@@ -26,25 +24,20 @@ public class LaunchServerModulesManager extends SimpleModuleManager {
         initContext = new LaunchServerInitContext(server);
     }
 
-    @Deprecated
     public void printModulesInfo() {
         for (LauncherModule module : modules) {
             LauncherModuleInfo info = module.getModuleInfo();
             LauncherTrustManager.CheckClassResult checkStatus = module.getCheckResult();
-            LogHelper.info("[MODULE] %s v: %s p: %d deps: %s sig: %s", info.name, info.version.getVersionString(), info.priority, Arrays.toString(info.dependencies), checkStatus == null ? "null" : checkStatus.type);
-            if (checkStatus != null && checkStatus.endCertificate != null) {
+            LogHelper.info("[MODULE] %s v: %s p: %d deps: %s sig: %s", info.name, info.version.getVersionString(), info.priority, Arrays.toString(info.dependencies), checkStatus == null ? "null": checkStatus.type);
+            if(checkStatus != null && checkStatus.endCertificate != null) {
                 X509Certificate cert = checkStatus.endCertificate;
                 LogHelper.info("[MODULE CERT] Module signer: %s", cert.getSubjectDN().getName());
             }
-            if (checkStatus != null && checkStatus.rootCertificate != null) {
+            if(checkStatus != null && checkStatus.rootCertificate != null) {
                 X509Certificate cert = checkStatus.rootCertificate;
                 LogHelper.info("[MODULE CERT] Module signer CA: %s", cert.getSubjectDN().getName());
             }
         }
-    }
-
-    public List<LauncherModule> getModules() {
-        return Collections.unmodifiableList(modules);
     }
 
     @Override

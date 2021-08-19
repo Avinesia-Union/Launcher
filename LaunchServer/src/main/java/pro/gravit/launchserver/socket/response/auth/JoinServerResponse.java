@@ -1,17 +1,15 @@
 package pro.gravit.launchserver.socket.response.auth;
 
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.events.request.JoinServerRequestEvent;
 import pro.gravit.launchserver.auth.AuthException;
 import pro.gravit.launchserver.auth.protect.interfaces.JoinServerProtectHandler;
 import pro.gravit.launchserver.socket.Client;
 import pro.gravit.launchserver.socket.response.SimpleResponse;
 import pro.gravit.utils.HookException;
+import pro.gravit.utils.helper.LogHelper;
 
 public class JoinServerResponse extends SimpleResponse {
-    private transient final Logger logger = LogManager.getLogger();
     public String serverID;
     public String accessToken;
     public String username;
@@ -41,15 +39,18 @@ public class JoinServerResponse extends SimpleResponse {
                     return;
                 }
             }
-            success = server.authManager.joinServer(client, username, accessToken, serverID);
-            if (success) {
-                logger.debug("joinServer: {} accessToken: {} serverID: {}", username, accessToken, serverID);
+            if (client.auth == null) {
+                LogHelper.warning("Client auth is null. Using default.");
+                success = server.config.getAuthProviderPair().handler.joinServer(username, accessToken, serverID);
+            } else success = client.auth.handler.joinServer(username, accessToken, serverID);
+            if (LogHelper.isDebugEnabled()) {
+                LogHelper.debug("joinServer: %s accessToken: %s serverID: %s", username, accessToken, serverID);
             }
         } catch (AuthException | HookException | SecurityException e) {
             sendError(e.getMessage());
             return;
         } catch (Exception e) {
-            logger.error("Join Server error", e);
+            LogHelper.error(e);
             sendError("Internal authHandler error");
             return;
         }

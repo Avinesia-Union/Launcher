@@ -1,6 +1,7 @@
 package pro.gravit.launcher;
 
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -27,12 +28,10 @@ import java.util.concurrent.Executor;
 public class AsyncDownloader {
     public static final Callback IGNORE = (ignored) -> {
     };
+    public final Callback callback;
     @LauncherInject("launcher.certificatePinning")
     private static boolean isCertificatePinning;
     private static volatile SSLSocketFactory sslSocketFactory;
-    private static volatile SSLContext sslContext;
-    public final Callback callback;
-    public volatile boolean isClosed;
 
     public AsyncDownloader(Callback callback) {
         this.callback = callback;
@@ -42,24 +41,9 @@ public class AsyncDownloader {
         callback = IGNORE;
     }
 
-    public static SSLSocketFactory makeSSLSocketFactory() throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, KeyManagementException {
-        if (sslSocketFactory != null) return sslSocketFactory;
-        SSLContext sslContext = makeSSLContext();
-        sslSocketFactory = sslContext.getSocketFactory();
-        return sslSocketFactory;
-    }
-
-    public static SSLContext makeSSLContext() throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, KeyManagementException {
-        if (sslContext != null) return sslContext;
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, CertificatePinningTrustManager.getTrustManager().getTrustManagers(), new SecureRandom());
-        return sslContext;
-    }
-
     public void downloadFile(URL url, Path target, long size) throws IOException {
-        if (isClosed) throw new IOException("Download interrupted");
         URLConnection connection = url.openConnection();
-        if (isCertificatePinning) {
+        if(isCertificatePinning) {
             HttpsURLConnection connection1 = (HttpsURLConnection) connection;
             try {
                 connection1.setSSLSocketFactory(makeSSLSocketFactory());
@@ -74,7 +58,7 @@ public class AsyncDownloader {
 
     public void downloadFile(URL url, Path target) throws IOException {
         URLConnection connection = url.openConnection();
-        if (isCertificatePinning) {
+        if(isCertificatePinning) {
             HttpsURLConnection connection1 = (HttpsURLConnection) connection;
             try {
                 connection1.setSSLSocketFactory(makeSSLSocketFactory());
@@ -85,6 +69,14 @@ public class AsyncDownloader {
         try (InputStream input = connection.getInputStream()) {
             IOHelper.transfer(input, target);
         }
+    }
+
+    public SSLSocketFactory makeSSLSocketFactory() throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, KeyManagementException {
+        if(sslSocketFactory != null) return sslSocketFactory;
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, CertificatePinningTrustManager.getTrustManager().getTrustManagers(), new SecureRandom());
+        sslSocketFactory = sslContext.getSocketFactory();
+        return sslSocketFactory;
     }
 
     public void downloadListInOneThread(List<SizedFile> files, String baseURL, Path targetDir) throws URISyntaxException, IOException {
@@ -124,9 +116,6 @@ public class AsyncDownloader {
                 }
             result.get(minIndex).add(file);
             sizes[minIndex] += file.size;
-        }
-        for (List<AsyncDownloader.SizedFile> list : result) {
-            Collections.shuffle(list);
         }
         return result;
     }
@@ -172,7 +161,6 @@ public class AsyncDownloader {
             // Download with digest update
             byte[] bytes = IOHelper.newBuffer();
             while (downloaded < size) {
-                if (isClosed) throw new IOException("Download interrupted");
                 int remaining = (int) Math.min(size - downloaded, bytes.length);
                 int length = input.read(bytes, 0, remaining);
                 if (length < 0)

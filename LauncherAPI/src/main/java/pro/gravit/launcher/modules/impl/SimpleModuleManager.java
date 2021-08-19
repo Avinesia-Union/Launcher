@@ -17,6 +17,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SignatureException;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,7 +122,7 @@ public class SimpleModuleManager implements LauncherModulesManager {
     @Override
     public LauncherModule loadModule(LauncherModule module) {
         if (modules.contains(module)) return module;
-        if (module.getCheckStatus() == null) {
+        if(module.getCheckStatus() == null) {
             LauncherTrustManager.CheckClassResult result = checkModuleClass(module.getClass());
             verifyClassCheckResult(result);
             module.setCheckResult(result);
@@ -193,17 +198,17 @@ public class SimpleModuleManager implements LauncherModulesManager {
     public LauncherTrustManager.CheckClassResult checkModuleClass(Class<? extends LauncherModule> clazz) {
         if (trustManager == null) return null;
         X509Certificate[] certificates = getCertificates(clazz);
-        return trustManager.checkCertificates(certificates, trustManager::stdCertificateChecker);
+        return trustManager.checkCertificates(certificates,trustManager::stdCertificateChecker);
     }
 
     public boolean verifyClassCheckResult(LauncherTrustManager.CheckClassResult result) {
-        if (result == null) return false;
+        if(result == null) return false;
         return result.type == LauncherTrustManager.CheckClassResultType.SUCCESS;
     }
 
     public void verifyClassCheckResultExceptional(LauncherTrustManager.CheckClassResult result) throws Exception {
-        if (verifyClassCheckResult(result)) return;
-        if (result.exception != null) throw result.exception;
+        if(verifyClassCheckResult(result)) return;
+        if(result.exception != null) throw result.exception;
         throw new SecurityException(result.type.name());
     }
 
@@ -262,16 +267,6 @@ public class SimpleModuleManager implements LauncherModulesManager {
             LauncherModuleInfo info = module.getModuleInfo();
             if (!versionPredicate.test(info.version)) continue;
             if (clazz.isAssignableFrom(module.getClass())) return (T) module;
-        }
-        return null;
-    }
-
-    @Override
-    public LauncherModule findModule(String name, Predicate<Version> versionPredicate) {
-        for (LauncherModule module : modules) {
-            LauncherModuleInfo info = module.getModuleInfo();
-            if (!versionPredicate.test(info.version)) continue;
-            if (name.equals(info.name)) return module;
         }
         return null;
     }

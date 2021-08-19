@@ -4,7 +4,6 @@ import pro.gravit.launcher.ClientPermissions;
 
 import java.util.UUID;
 
-@Deprecated
 public interface User {
     String getUsername();
 

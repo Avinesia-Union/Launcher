@@ -2,14 +2,11 @@ package pro.gravit.launchserver.auth.provider;
 
 import pro.gravit.launcher.events.request.GetAvailabilityAuthRequestEvent;
 import pro.gravit.launcher.request.auth.AuthRequest;
-import pro.gravit.launcher.request.auth.details.AuthPasswordDetails;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.auth.AuthException;
-import pro.gravit.launchserver.socket.Client;
 import pro.gravit.utils.ProviderMap;
 
 import java.io.IOException;
-import java.util.List;
 
 public abstract class AuthProvider implements AutoCloseable {
     public static final ProviderMap<AuthProvider> providers = new ProviderMap<>("AuthProvider");
@@ -20,7 +17,6 @@ public abstract class AuthProvider implements AutoCloseable {
         throw new AuthException(message);
     }
 
-    @SuppressWarnings("deprecation")
     public static void registerProviders() {
         if (!registredProv) {
             providers.register("null", NullAuthProvider.class);
@@ -35,18 +31,12 @@ public abstract class AuthProvider implements AutoCloseable {
         }
     }
 
-    @Deprecated
     public GetAvailabilityAuthRequestEvent.AuthAvailability.AuthType getFirstAuthType() {
         return GetAvailabilityAuthRequestEvent.AuthAvailability.AuthType.PASSWORD;
     }
 
-    @Deprecated
     public GetAvailabilityAuthRequestEvent.AuthAvailability.AuthType getSecondAuthType() {
         return GetAvailabilityAuthRequestEvent.AuthAvailability.AuthType.NONE;
-    }
-
-    public List<GetAvailabilityAuthRequestEvent.AuthAvailabilityDetails> getDetails(Client client) {
-        return List.of(new AuthPasswordDetails());
     }
 
     /**

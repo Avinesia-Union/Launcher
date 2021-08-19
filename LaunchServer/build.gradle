@@ -8,7 +8,7 @@ repositories {
         url "https://oss.sonatype.org/content/repositories/snapshots"
     }
     maven {
-        url "https://jcenter.bintray.com/"
+        url "https://maven.geomajas.org/"
     }
 }
 
@@ -71,7 +71,6 @@ task cleanjar(type: Jar, dependsOn: jar) {
 
 dependencies {
     pack project(':LauncherAPI')
-    bundle group: 'me.tongfei', name: 'progressbar', version: '0.9.2'
     bundle group: 'org.fusesource.jansi', name: 'jansi', version: rootProject['verJansi']
     bundle group: 'org.jline', name: 'jline', version: rootProject['verJline']
     bundle group: 'org.jline', name: 'jline-reader', version: rootProject['verJline']
@@ -79,21 +78,17 @@ dependencies {
     bundle group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: rootProject['verBcpkix']
     bundle group: 'org.ow2.asm', name: 'asm-commons', version: rootProject['verAsm']
     bundle group: 'io.netty', name: 'netty-all', version: rootProject['verNetty']
+    bundle group: 'org.slf4j', name: 'slf4j-simple', version: rootProject['verSlf4j']
     bundle group: 'org.slf4j', name: 'slf4j-api', version: rootProject['verSlf4j']
     bundle group: 'org.hibernate', name: 'hibernate-core', version: rootProject['verHibernate']
     bundle group: 'org.hibernate', name: 'hibernate-hikaricp', version: rootProject['verHibernate']
     bundle group: 'mysql', name: 'mysql-connector-java', version: rootProject['verMySQLConn']
     bundle group: 'org.postgresql', name: 'postgresql', version: rootProject['verPostgreSQLConn']
-    bundle group: 'com.guardsquare', name: 'proguard-base', version: rootProject['verProguard']
-    bundle group: 'org.apache.logging.log4j', name: 'log4j-core', version: rootProject['verLog4j']
-    bundle group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: rootProject['verLog4j']
-    bundle group: 'io.jsonwebtoken', name: 'jjwt-api', version: rootProject['verJwt']
-    bundle group: 'io.jsonwebtoken', name: 'jjwt-impl', version: rootProject['verJwt']
-    bundle group: 'io.jsonwebtoken', name: 'jjwt-gson', version: rootProject['verJwt']
+    bundle group: 'net.sf.proguard', name: 'proguard-base', version: rootProject['verProguard']
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: rootProject['verJunit']
 
-    hikari 'io.micrometer:micrometer-core:1.5.10'
-    hikari('com.zaxxer:HikariCP:4.0.3') {
+    hikari 'io.micrometer:micrometer-core:1.0.6'
+    hikari('com.zaxxer:HikariCP:3.4.1') {
         exclude group: 'javassist'
         exclude group: 'io.micrometer'
         exclude group: 'org.slf4j'

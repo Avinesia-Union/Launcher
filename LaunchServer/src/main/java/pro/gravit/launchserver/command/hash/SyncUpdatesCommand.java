@@ -1,9 +1,8 @@
 package pro.gravit.launchserver.command.hash;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.command.Command;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -11,8 +10,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 public final class SyncUpdatesCommand extends Command {
-    private transient final Logger logger = LogManager.getLogger();
-
     public SyncUpdatesCommand(LaunchServer server) {
         super(server);
     }
@@ -37,6 +34,6 @@ public final class SyncUpdatesCommand extends Command {
 
         // Hash updates dir
         server.syncUpdatesDir(dirs);
-        logger.info("Updates dir successfully resynced");
+        LogHelper.subInfo("Updates dir successfully resynced");
     }
 }

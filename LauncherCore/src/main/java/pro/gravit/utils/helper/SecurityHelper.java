@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.security.*;
-import java.security.interfaces.*;
+import java.security.interfaces.ECKey;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -26,14 +28,10 @@ public final class SecurityHelper {
     // EC Algorithm constants
     public static final String EC_CURVE = "secp256r1";
     public static final String EC_SIGN_ALGO = "SHA256withECDSA";
+    public static final String EC_CIPHER_ALGO = "ECIES";
     public static final int TOKEN_LENGTH = 16;
 
     // RSA Algorithm constants
-
-    public static final String RSA_ALGO = "RSA";
-    public static final String RSA_SIGN_ALGO = "SHA256withRSA";
-    public static final String RSA_CIPHER_ALGO = "RSA/ECB/PKCS1Padding";
-
     // Algorithm size constants
     public static final int AES_KEY_LENGTH = 8;
     public static final int TOKEN_STRING_LENGTH = TOKEN_LENGTH << 1;
@@ -83,27 +81,12 @@ public final class SecurityHelper {
         }
     }
 
-    @Deprecated
     public static KeyPair genECKeyPair(SecureRandom random) {
-        return genECDSAKeyPair(random);
-    }
-
-    public static KeyPair genECDSAKeyPair(SecureRandom random) {
         try {
             KeyPairGenerator generator = KeyPairGenerator.getInstance(EC_ALGO);
             generator.initialize(new ECGenParameterSpec(EC_CURVE), random);
             return generator.genKeyPair();
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
-            throw new InternalError(e);
-        }
-    }
-
-    public static KeyPair genRSAKeyPair(SecureRandom random) {
-        try {
-            KeyPairGenerator generator = KeyPairGenerator.getInstance(RSA_ALGO);
-            generator.initialize(RSA_KEY_LENGTH_BITS, random);
-            return generator.genKeyPair();
-        } catch (NoSuchAlgorithmException e) {
             throw new InternalError(e);
         }
     }
@@ -122,23 +105,6 @@ public final class SecurityHelper {
 
     public static boolean isValidSign(InputStream input, byte[] sign, ECPublicKey publicKey) throws IOException, SignatureException {
         Signature signature = newECVerifySignature(publicKey);
-        updateSignature(input, signature);
-        return signature.verify(sign);
-    }
-
-    public static boolean isValidSign(byte[] bytes, byte[] sign, RSAPublicKey publicKey) throws SignatureException {
-        Signature signature = newRSAVerifySignature(publicKey);
-        try {
-            signature.update(bytes);
-        } catch (SignatureException e) {
-            throw new InternalError(e);
-        }
-        return signature.verify(sign);
-    }
-
-
-    public static boolean isValidSign(InputStream input, byte[] sign, RSAPublicKey publicKey) throws IOException, SignatureException {
-        Signature signature = newRSAVerifySignature(publicKey);
         updateSignature(input, signature);
         return signature.verify(sign);
     }
@@ -184,8 +150,8 @@ public final class SecurityHelper {
         return new SecureRandom();
     }
 
-    private static Cipher newRSACipher(int mode, RSAKey key) {
-        Cipher cipher = newCipher(RSA_CIPHER_ALGO);
+    private static Cipher newECCipher(int mode, ECKey key) {
+        Cipher cipher = newBCCipher(EC_CIPHER_ALGO);
         try {
             cipher.init(mode, (Key) key);
         } catch (InvalidKeyException e) {
@@ -194,17 +160,9 @@ public final class SecurityHelper {
         return cipher;
     }
 
-    private static KeyFactory newECDSAKeyFactory() {
+    private static KeyFactory newECKeyFactory() {
         try {
             return KeyFactory.getInstance(EC_ALGO);
-        } catch (NoSuchAlgorithmException e) {
-            throw new InternalError(e);
-        }
-    }
-
-    private static KeyFactory newRSAKeyFactory() {
-        try {
-            return KeyFactory.getInstance(RSA_ALGO);
         } catch (NoSuchAlgorithmException e) {
             throw new InternalError(e);
         }
@@ -213,14 +171,6 @@ public final class SecurityHelper {
     private static Signature newECSignature() {
         try {
             return Signature.getInstance(EC_SIGN_ALGO);
-        } catch (NoSuchAlgorithmException e) {
-            throw new InternalError(e);
-        }
-    }
-
-    private static Signature newRSASignature() {
-        try {
-            return Signature.getInstance(RSA_SIGN_ALGO);
         } catch (NoSuchAlgorithmException e) {
             throw new InternalError(e);
         }
@@ -236,29 +186,9 @@ public final class SecurityHelper {
         return signature;
     }
 
-    public static Signature newRSASignSignature(RSAPrivateKey key) {
-        Signature signature = newRSASignature();
-        try {
-            signature.initSign(key);
-        } catch (InvalidKeyException e) {
-            throw new InternalError(e);
-        }
-        return signature;
-    }
-
 
     public static Signature newECVerifySignature(ECPublicKey key) {
         Signature signature = newECSignature();
-        try {
-            signature.initVerify(key);
-        } catch (InvalidKeyException e) {
-            throw new InternalError(e);
-        }
-        return signature;
-    }
-
-    public static Signature newRSAVerifySignature(RSAPublicKey key) {
-        Signature signature = newRSASignature();
         try {
             signature.initVerify(key);
         } catch (InvalidKeyException e) {
@@ -394,9 +324,6 @@ public final class SecurityHelper {
 
 
     public static String toHex(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
         int offset = 0;
         char[] hex = new char[bytes.length << 1];
         for (byte currentByte : bytes) {
@@ -409,30 +336,12 @@ public final class SecurityHelper {
         return new String(hex);
     }
 
-    @Deprecated
     public static ECPublicKey toPublicECKey(byte[] bytes) throws InvalidKeySpecException {
-        return toPublicECDSAKey(bytes);
+        return (ECPublicKey) newECKeyFactory().generatePublic(new X509EncodedKeySpec(bytes));
     }
 
-    @Deprecated
     public static ECPrivateKey toPrivateECKey(byte[] bytes) throws InvalidKeySpecException {
-        return toPrivateECDSAKey(bytes);
-    }
-
-    public static ECPublicKey toPublicECDSAKey(byte[] bytes) throws InvalidKeySpecException {
-        return (ECPublicKey) newECDSAKeyFactory().generatePublic(new X509EncodedKeySpec(bytes));
-    }
-
-    public static ECPrivateKey toPrivateECDSAKey(byte[] bytes) throws InvalidKeySpecException {
-        return (ECPrivateKey) newECDSAKeyFactory().generatePrivate(new PKCS8EncodedKeySpec(bytes));
-    }
-
-    public static RSAPublicKey toPublicRSAKey(byte[] bytes) throws InvalidKeySpecException {
-        return (RSAPublicKey) newRSAKeyFactory().generatePublic(new X509EncodedKeySpec(bytes));
-    }
-
-    public static RSAPrivateKey toPrivateRSAKey(byte[] bytes) throws InvalidKeySpecException {
-        return (RSAPrivateKey) newRSAKeyFactory().generatePrivate(new PKCS8EncodedKeySpec(bytes));
+        return (ECPrivateKey) newECKeyFactory().generatePrivate(new PKCS8EncodedKeySpec(bytes));
     }
 
     private static void updateSignature(InputStream input, Signature signature) throws IOException {
@@ -457,33 +366,22 @@ public final class SecurityHelper {
             throw new SignatureException("Invalid stream sign");
     }
 
-    public static void verifySign(byte[] bytes, byte[] sign, RSAPublicKey publicKey) throws SignatureException {
-        if (!isValidSign(bytes, sign, publicKey))
-            throw new SignatureException("Invalid sign");
-    }
-
-
-    public static void verifySign(InputStream input, byte[] sign, RSAPublicKey publicKey) throws SignatureException, IOException {
-        if (!isValidSign(input, sign, publicKey))
-            throw new SignatureException("Invalid stream sign");
-    }
-
 
     public static String verifyToken(String token) {
         return VerifyHelper.verify(token, SecurityHelper::isValidToken, String.format("Invalid token: '%s'", token));
     }
 
-    public static Cipher newRSADecryptCipher(RSAPrivateKey privateKey) {
+    public static Cipher newECDecryptCipher(ECPrivateKey privateKey) {
         try {
-            return newRSACipher(Cipher.DECRYPT_MODE, privateKey);
+            return newECCipher(Cipher.DECRYPT_MODE, privateKey);
         } catch (SecurityException e) {
             throw new InternalError(e);
         }
     }
 
-    public static Cipher newRSAEncryptCipher(RSAPublicKey publicKey) {
+    public static Cipher newECEncryptCipher(ECPublicKey publicKey) {
         try {
-            return newRSACipher(Cipher.ENCRYPT_MODE, publicKey);
+            return newECCipher(Cipher.ENCRYPT_MODE, publicKey);
         } catch (SecurityException e) {
             throw new InternalError(e);
         }
@@ -491,15 +389,15 @@ public final class SecurityHelper {
 
     //AES
     public static byte[] encrypt(String seed, byte[] cleartext) throws Exception {
-        byte[] rawKey = getAESKey(IOHelper.encode(seed));
+        byte[] rawKey = getRawKey(seed.getBytes());
         return encrypt(rawKey, cleartext);
     }
 
     public static byte[] encrypt(String seed, String cleartext) throws Exception {
-        return encrypt(seed, IOHelper.encode(cleartext));
+        return encrypt(seed, cleartext.getBytes());
     }
 
-    public static byte[] getAESKey(byte[] seed) throws Exception {
+    private static byte[] getRawKey(byte[] seed) throws Exception {
         KeyGenerator kGen = KeyGenerator.getInstance("AES");
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
         sr.setSeed(seed);
@@ -523,7 +421,7 @@ public final class SecurityHelper {
     }
 
     public static byte[] decrypt(String seed, byte[] encrypted) throws Exception {
-        return decrypt(getAESKey(IOHelper.encode(seed)), encrypted);
+        return decrypt(getRawKey(seed.getBytes()), encrypted);
     }
 
     public static byte[] fromHex(String hexString) {

@@ -5,7 +5,6 @@ import pro.gravit.launchserver.dao.User;
 
 import java.util.UUID;
 
-@Deprecated
 public class HibernateAuthHandler extends CachedAuthHandler implements RequiredDAO {
     @Override
     protected Entry fetchEntry(String username) {

@@ -1,15 +1,13 @@
 package pro.gravit.launchserver.command.hash;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import pro.gravit.launcher.Launcher;
 import pro.gravit.launcher.profiles.ClientProfile;
 import pro.gravit.launcher.profiles.optional.OptionalFile;
-import pro.gravit.launcher.profiles.optional.OptionalTrigger;
 import pro.gravit.launcher.profiles.optional.actions.*;
 import pro.gravit.launchserver.LaunchServer;
 import pro.gravit.launchserver.command.Command;
 import pro.gravit.utils.helper.IOHelper;
+import pro.gravit.utils.helper.LogHelper;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -22,8 +20,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 public class SaveProfilesCommand extends Command {
-    private transient final Logger logger = LogManager.getLogger();
-
     public SaveProfilesCommand(LaunchServer server) {
         super(server);
     }
@@ -61,17 +57,10 @@ public class SaveProfilesCommand extends Command {
                         action = new OptionalActionClientArgs(Arrays.asList(list));
                         break;
                     default:
+                        LogHelper.warning("Not converted optional %s with type %s. Type unknown", file.name, file.type.toString());
                         continue;
                 }
                 file.actions.add(action);
-            }
-            if (file.triggers != null) {
-                file.triggersList = new ArrayList<>(file.triggers.length);
-                for (OptionalTrigger trigger : file.triggers) {
-                    pro.gravit.launcher.profiles.optional.triggers.OptionalTrigger newTrigger = trigger.toTrigger();
-                    if (newTrigger != null) file.triggersList.add(newTrigger);
-                }
-                file.triggers = null;
             }
         }
         try (Writer w = IOHelper.newWriter(path)) {
@@ -96,7 +85,7 @@ public class SaveProfilesCommand extends Command {
             for (String profileName : args) {
                 Path profilePath = server.profilesDir.resolve(profileName.concat(".json"));
                 if (!Files.exists(profilePath)) {
-                    logger.error("Profile {} not found", profilePath.toString());
+                    LogHelper.error("Profile %s not found", profilePath.toString());
                     return;
                 }
                 ClientProfile profile;
@@ -104,10 +93,9 @@ public class SaveProfilesCommand extends Command {
                     profile = Launcher.gsonManager.configGson.fromJson(reader, ClientProfile.class);
                 }
                 saveProfile(profile, profilePath);
-                logger.info("Profile {} save successful", profilePath.toString());
+                LogHelper.info("Profile %s save successful", profilePath.toString());
             }
             server.syncProfilesDir();
         }
     }
-
 }

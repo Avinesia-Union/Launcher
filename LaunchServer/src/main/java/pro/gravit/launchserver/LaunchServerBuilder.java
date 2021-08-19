@@ -3,11 +3,12 @@ package pro.gravit.launchserver;
 import pro.gravit.launchserver.config.LaunchServerConfig;
 import pro.gravit.launchserver.config.LaunchServerRuntimeConfig;
 import pro.gravit.launchserver.manangers.CertificateManager;
-import pro.gravit.launchserver.manangers.KeyAgreementManager;
 import pro.gravit.launchserver.modules.impl.LaunchServerModulesManager;
 import pro.gravit.utils.command.CommandHandler;
 
 import java.nio.file.Path;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 
 public class LaunchServerBuilder {
     private LaunchServerConfig config;
@@ -16,7 +17,8 @@ public class LaunchServerBuilder {
     private LaunchServer.LaunchServerEnv env;
     private LaunchServerModulesManager modulesManager;
     private LaunchServer.LaunchServerDirectories directories = new LaunchServer.LaunchServerDirectories();
-    private KeyAgreementManager keyAgreementManager;
+    private ECPublicKey publicKey;
+    private ECPrivateKey privateKey;
     private CertificateManager certificateManager;
     private LaunchServer.LaunchServerConfigManager launchServerConfigManager;
 
@@ -55,12 +57,24 @@ public class LaunchServerBuilder {
         return this;
     }
 
+    public LaunchServerBuilder setPublicKey(ECPublicKey publicKey) {
+        this.publicKey = publicKey;
+        return this;
+    }
+
+    public LaunchServerBuilder setPrivateKey(ECPrivateKey privateKey) {
+        this.privateKey = privateKey;
+        return this;
+    }
+
     public LaunchServerBuilder setLaunchServerConfigManager(LaunchServer.LaunchServerConfigManager launchServerConfigManager) {
         this.launchServerConfigManager = launchServerConfigManager;
         return this;
     }
 
     public LaunchServer build() throws Exception {
+        //if(updatesDir == null) updatesDir = dir.resolve("updates");
+        //if(profilesDir == null) profilesDir = dir.resolve("profiles");
         directories.collect();
         if (launchServerConfigManager == null) {
             launchServerConfigManager = new LaunchServer.LaunchServerConfigManager() {
@@ -85,18 +99,11 @@ public class LaunchServerBuilder {
                 }
             };
         }
-        if (keyAgreementManager == null) {
-            keyAgreementManager = new KeyAgreementManager(directories.keyDirectory);
-        }
-        return new LaunchServer(directories, env, config, runtimeConfig, launchServerConfigManager, modulesManager, keyAgreementManager, commandHandler, certificateManager);
+        return new LaunchServer(directories, env, config, runtimeConfig, launchServerConfigManager, modulesManager, publicKey, privateKey, commandHandler, certificateManager);
     }
 
     public LaunchServerBuilder setCertificateManager(CertificateManager certificateManager) {
         this.certificateManager = certificateManager;
         return this;
-    }
-
-    public void setKeyAgreementManager(KeyAgreementManager keyAgreementManager) {
-        this.keyAgreementManager = keyAgreementManager;
     }
 }

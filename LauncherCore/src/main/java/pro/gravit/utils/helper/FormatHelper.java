@@ -55,8 +55,8 @@ public class FormatHelper {
 
     static String ansiFormatVersion(String product) {
         return new Ansi().bold(). // Setup
-                fgBright(Ansi.Color.MAGENTA).a("GravitLauncher "). // sashok724's
-                fgBright(Ansi.Color.BLUE).a("(fork sashok724's Launcher) ").
+                fgBright(Ansi.Color.MAGENTA).a("AvinesiaLauncher "). // sashok724's
+                fgBright(Ansi.Color.BLUE).a("(fork Gravit Launcher) ").
                 fgBright(Ansi.Color.CYAN).a(product). // Product
                 fgBright(Ansi.Color.WHITE).a(" v").fgBright(Ansi.Color.BLUE).a(Version.getVersion().toString()). // Version
                 fgBright(Ansi.Color.WHITE).a(" (build #").fgBright(Ansi.Color.RED).a(Version.getVersion().build).fgBright(Ansi.Color.WHITE).a(')'). // Build#
@@ -68,7 +68,7 @@ public class FormatHelper {
                 fgBright(Ansi.Color.MAGENTA).a("License for "). // sashok724's
                 fgBright(Ansi.Color.CYAN).a(product). // Product
                 fgBright(Ansi.Color.WHITE).a(" GPLv3").fgBright(Ansi.Color.WHITE).a(". SourceCode: "). // Version
-                fgBright(Ansi.Color.YELLOW).a("https://github.com/GravitLauncher/Launcher").
+                fgBright(Ansi.Color.YELLOW).a("https://murbyte.su").
                 reset().toString(); // To file
     }
 
@@ -77,10 +77,10 @@ public class FormatHelper {
     }
 
     static String formatVersion(String product) {
-        return String.format("GravitLauncher (fork sashok724's Launcher) %s v%s", product, Version.getVersion().toString());
+        return String.format("AvinesiaLauncher (fork Gravit Launcher) %s v%s", product, Version.getVersion().toString());
     }
 
     static String formatLicense(String product) {
-        return String.format("License for %s GPLv3. SourceCode: https://github.com/GravitLauncher/Launcher", product);
+        return String.format("License for %s GPLv3. Web: https://murbyte.su", product);
     }
 }

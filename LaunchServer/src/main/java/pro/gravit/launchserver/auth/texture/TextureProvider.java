@@ -17,6 +17,7 @@ public abstract class TextureProvider implements AutoCloseable {
 
             // Auth providers that doesn't do nothing :D
             providers.register("request", RequestTextureProvider.class);
+			providers.register("json", JsonTextureProvider.class);
             registredProv = true;
         }
     }

@@ -11,6 +11,7 @@ project.ext {
     verBcpkix = '1.61'
     verSlf4j = '1.7.25'
     verMySQLConn = '8.0.19'
+    verLog4j = '2.14.1'
     verPostgreSQLConn = '42.2.11'
     verProguard = '6.2.2'
     verLaunch4j = '3.12'

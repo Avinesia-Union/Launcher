@@ -10,11 +10,10 @@ import pro.gravit.utils.helper.LogHelper;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class ClientLauncherWrapper {
     public static final String MAGIC_ARG = "-Djdk.attach.allowAttachSelf";
@@ -24,45 +23,6 @@ public class ClientLauncherWrapper {
     public static boolean waitProcess = Boolean.getBoolean(WAIT_PROCESS_PROPERTY);
     @LauncherInject("launcher.memory")
     public static int launcherMemoryLimit;
-
-    public static class JavaVersion {
-        public final Path jvmDir;
-        public final int version;
-        public boolean enabledJavaFX;
-
-        public JavaVersion(Path jvmDir, int version) {
-            this.jvmDir = jvmDir;
-            this.version = version;
-            this.enabledJavaFX = true;
-        }
-
-        public static JavaVersion getCurrentJavaVersion() {
-            return new JavaVersion(Paths.get(System.getProperty("java.home")), JVMHelper.getVersion());
-        }
-
-        public static JavaVersion getByPath(Path jvmDir) throws IOException {
-            Path releaseFile = jvmDir.resolve("release");
-            if (!IOHelper.isFile(releaseFile)) return null;
-            Properties properties = new Properties();
-            properties.load(IOHelper.newReader(releaseFile));
-            int javaVersion = getJavaVersion(properties.getProperty("JAVA_VERSION").replaceAll("\"", ""));
-            JavaVersion resultJavaVersion = new JavaVersion(jvmDir, javaVersion);
-            if (javaVersion <= 8) {
-                resultJavaVersion.enabledJavaFX = isExistExtJavaLibrary(jvmDir, "jfxrt");
-            } else {
-                resultJavaVersion.enabledJavaFX = tryFindModule(jvmDir, "javafx.base") != null;
-                if (!resultJavaVersion.enabledJavaFX)
-                    resultJavaVersion.enabledJavaFX = tryFindModule(jvmDir.resolve("jre"), "javafx.base") != null;
-            }
-            return resultJavaVersion;
-        }
-
-        public static boolean isExistExtJavaLibrary(Path jvmDir, String name) {
-            Path jrePath = jvmDir.resolve("lib").resolve("ext").resolve(name.concat(".jar"));
-            Path jdkPath = jvmDir.resolve("jre").resolve("lib").resolve("ext").resolve(name.concat(".jar"));
-            return IOHelper.isFile(jrePath) || IOHelper.isFile(jdkPath);
-        }
-    }
 
     public static void main(String[] arguments) throws IOException, InterruptedException {
         LogHelper.printVersion("Launcher");
@@ -89,63 +49,83 @@ public class ClientLauncherWrapper {
             if (LogHelper.isDebugEnabled()) waitProcess = true;
         }
         LogHelper.info("Restart Launcher with JavaAgent...");
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        if (waitProcess) processBuilder.inheritIO();
+        ClientLauncherWrapperContext context = new ClientLauncherWrapperContext();
+        context.processBuilder = new ProcessBuilder();
+        if (waitProcess) context.processBuilder.inheritIO();
 
-        JavaVersion javaVersion = null;
+        context.javaVersion = null;
         try {
-            if (!noJavaCheck) javaVersion = findJava();
+            if (!noJavaCheck) context.javaVersion = findJava();
         } catch (Throwable e) {
             LogHelper.error(e);
         }
-        if (javaVersion == null) {
-            javaVersion = JavaVersion.getCurrentJavaVersion();
+        if (context.javaVersion == null) {
+            context.javaVersion = JavaVersion.getCurrentJavaVersion();
         }
 
-        Path javaBin = IOHelper.resolveJavaBin(javaVersion.jvmDir);
-        List<String> args = new LinkedList<>();
-        args.add(javaBin.toString());
+        context.executePath = IOHelper.resolveJavaBin(context.javaVersion.jvmDir);
+        //List<String> args = new LinkedList<>();
+        //args.add(javaBin.toString());
         String pathLauncher = IOHelper.getCodeSource(LauncherEngine.class).toString();
-        args.add(JVMHelper.jvmProperty(LogHelper.DEBUG_PROPERTY, Boolean.toString(LogHelper.isDebugEnabled())));
-        args.add(JVMHelper.jvmProperty(LogHelper.STACKTRACE_PROPERTY, Boolean.toString(LogHelper.isStacktraceEnabled())));
-        args.add(JVMHelper.jvmProperty(LogHelper.DEV_PROPERTY, Boolean.toString(LogHelper.isDevEnabled())));
-        JVMHelper.addSystemPropertyToArgs(args, DirBridge.CUSTOMDIR_PROPERTY);
-        JVMHelper.addSystemPropertyToArgs(args, DirBridge.USE_CUSTOMDIR_PROPERTY);
-        JVMHelper.addSystemPropertyToArgs(args, DirBridge.USE_OPTDIR_PROPERTY);
-        JVMHelper.addSystemPropertyToArgs(args, DirWatcher.IGN_OVERFLOW);
-        if (javaVersion.version >= 9) {
-            LogHelper.debug("Found Java 9+ ( %s )", System.getProperty("java.version"));
-            String pathToFx = System.getenv("PATH_TO_FX");
-            Path fxPath = pathToFx == null ? null : Paths.get(pathToFx);
-            StringBuilder builder = new StringBuilder();
-            Path[] findPath = new Path[]{javaVersion.jvmDir, javaVersion.jvmDir.resolve("jre"), fxPath};
-            tryAddModule(findPath, "javafx.base", builder);
-            tryAddModule(findPath, "javafx.graphics", builder);
-            tryAddModule(findPath, "javafx.fxml", builder);
-            tryAddModule(findPath, "javafx.controls", builder);
-            boolean useSwing = tryAddModule(findPath, "javafx.swing", builder);
-            String modulePath = builder.toString();
-            if (!modulePath.isEmpty()) {
+        context.mainClass = LauncherEngine.class.getName();
+        context.memoryLimit = launcherMemoryLimit;
+        context.classpath.add(pathLauncher);
+        context.jvmProperties.put(LogHelper.DEBUG_PROPERTY, Boolean.toString(LogHelper.isDebugEnabled()));
+        context.jvmProperties.put(LogHelper.STACKTRACE_PROPERTY, Boolean.toString(LogHelper.isStacktraceEnabled()));
+        context.jvmProperties.put(LogHelper.DEV_PROPERTY, Boolean.toString(LogHelper.isDevEnabled()));
+        context.addSystemProperty(DirBridge.CUSTOMDIR_PROPERTY);
+        context.addSystemProperty(DirBridge.USE_CUSTOMDIR_PROPERTY);
+        context.addSystemProperty(DirBridge.USE_OPTDIR_PROPERTY);
+        context.addSystemProperty(DirWatcher.IGN_OVERFLOW);
+        context.jvmModules.add("javafx.base");
+        context.jvmModules.add("javafx.graphics");
+        context.jvmModules.add("javafx.fxml");
+        context.jvmModules.add("javafx.controls");
+        context.jvmModules.add("javafx.swing");
+        context.args.add(MAGIC_ARG);
+        context.args.add("-XX:+DisableAttachMechanism");
+        EnvHelper.addEnv(context.processBuilder);
+        LauncherEngine.modulesManager.callWrapper(context);
+        // ---------
+        List<String> args = new ArrayList<>(16);
+        args.add(context.executePath.toAbsolutePath().toString());
+        args.addAll(context.args);
+        context.jvmProperties.forEach((key,value) -> args.add(String.format("-D%s=%s", key, value)));
+        if(context.javaVersion.version >= 9) {
+            context.javaFXPaths.add(context.javaVersion.jvmDir);
+            context.javaFXPaths.add(context.javaVersion.jvmDir.resolve("jre"));
+            Path openjfxPath = tryGetOpenJFXPath(context.javaVersion.jvmDir);
+            if(openjfxPath != null) {
+                context.javaFXPaths.add(openjfxPath);
+            }
+            StringBuilder modulesPath = new StringBuilder();
+            StringBuilder modulesAdd = new StringBuilder();
+            for(String moduleName : context.jvmModules) {
+                boolean success = tryAddModule(context.javaFXPaths, moduleName, modulesPath);
+                if(success) {
+                    if(modulesAdd.length() > 0) modulesAdd.append(",");
+                    modulesAdd.append(moduleName);
+                }
+            }
+            if(modulesAdd.length() > 0) {
                 args.add("--add-modules");
-                String javaModules = "javafx.base,javafx.fxml,javafx.controls,jdk.unsupported";
-                if (useSwing) javaModules = javaModules.concat(",javafx.swing");
-                args.add(javaModules);
+                args.add(modulesAdd.toString());
+            }
+            if(modulesPath.length() > 0) {
                 args.add("--module-path");
-                args.add(modulePath);
+                args.add(modulesPath.toString());
             }
         }
-        args.add(MAGIC_ARG);
-        args.add("-XX:+DisableAttachMechanism");
-        args.add("-Xmx256M");
-        //Collections.addAll(args, "-javaagent:".concat(pathLauncher));
+        if (context.memoryLimit != 0) {
+            args.add(String.format("-Xmx%dM", context.memoryLimit));
+        }
         args.add("-cp");
-        args.add(pathLauncher);
-        args.add(LauncherEngine.class.getName());
-        LauncherEngine.modulesManager.callWrapper(processBuilder, args);
-        EnvHelper.addEnv(processBuilder);
+        args.add(String.join(IOHelper.PLATFORM_SEPARATOR, context.classpath));
+        args.add(context.mainClass);
+        args.addAll(context.clientArgs);
         LogHelper.debug("Commandline: " + args);
-        processBuilder.command(args);
-        Process process = processBuilder.start();
+        context.processBuilder.command(args);
+        Process process = context.processBuilder.start();
         if (!waitProcess) {
             Thread.sleep(3000);
             if (!process.isAlive()) {
@@ -162,6 +142,27 @@ public class ClientLauncherWrapper {
         }
     }
 
+    public static Path tryGetOpenJFXPath(Path jvmDir) {
+        String dirName = jvmDir.getFileName().toString();
+        Path parent = jvmDir.getParent();
+        if(parent == null) return null;
+        Path archJFXPath = parent.resolve(dirName.replace("openjdk", "openjfx"));
+        if(Files.isDirectory(archJFXPath)) {
+            return archJFXPath;
+        }
+        Path arch2JFXPath = parent.resolve(dirName.replace("jdk", "openjfx"));
+        if(Files.isDirectory(arch2JFXPath)) {
+            return arch2JFXPath;
+        }
+        if(JVMHelper.OS_TYPE == JVMHelper.OS.LINUX) {
+            Path debianJfxPath = Paths.get("/usr/share/openjfx");
+            if(Files.isDirectory(debianJfxPath)) {
+                return debianJfxPath;
+            }
+        }
+        return null;
+    }
+
     public static Path tryFindModule(Path path, String moduleName) {
         Path result = path.resolve(moduleName.concat(".jar"));
         LogHelper.dev("Try resolve %s", result.toString());
@@ -173,7 +174,7 @@ public class ClientLauncherWrapper {
         else return result;
     }
 
-    public static boolean tryAddModule(Path[] paths, String moduleName, StringBuilder args) {
+    public static boolean tryAddModule(List<Path> paths, String moduleName, StringBuilder args) {
         for (Path path : paths) {
             if (path == null) continue;
             Path result = tryFindModule(path, moduleName);
@@ -243,5 +244,71 @@ public class ClientLauncherWrapper {
             }
         }
         return Integer.parseInt(version);
+    }
+
+    public static class JavaVersion {
+        public final Path jvmDir;
+        public final int version;
+        public final int build;
+        public boolean enabledJavaFX;
+
+        public JavaVersion(Path jvmDir, int version) {
+            this.jvmDir = jvmDir;
+            this.version = version;
+            this.build = 0;
+            this.enabledJavaFX = true;
+        }
+
+        public JavaVersion(Path jvmDir, int version, int build, boolean enabledJavaFX) {
+            this.jvmDir = jvmDir;
+            this.version = version;
+            this.build = build;
+            this.enabledJavaFX = enabledJavaFX;
+        }
+
+        public static JavaVersion getCurrentJavaVersion() {
+            return new JavaVersion(Paths.get(System.getProperty("java.home")), JVMHelper.getVersion());
+        }
+
+        public static JavaVersion getByPath(Path jvmDir) throws IOException {
+            Path releaseFile = jvmDir.resolve("release");
+            if (!IOHelper.isFile(releaseFile)) return null;
+            Properties properties = new Properties();
+            properties.load(IOHelper.newReader(releaseFile));
+            int javaVersion = getJavaVersion(properties.getProperty("JAVA_VERSION").replaceAll("\"", ""));
+            JavaVersion resultJavaVersion = new JavaVersion(jvmDir, javaVersion);
+            if (javaVersion <= 8) {
+                resultJavaVersion.enabledJavaFX = isExistExtJavaLibrary(jvmDir, "jfxrt");
+            } else {
+                resultJavaVersion.enabledJavaFX = tryFindModule(jvmDir, "javafx.base") != null;
+                if (!resultJavaVersion.enabledJavaFX)
+                    resultJavaVersion.enabledJavaFX = tryFindModule(jvmDir.resolve("jre"), "javafx.base") != null;
+            }
+            return resultJavaVersion;
+        }
+
+        public static boolean isExistExtJavaLibrary(Path jvmDir, String name) {
+            Path jrePath = jvmDir.resolve("lib").resolve("ext").resolve(name.concat(".jar"));
+            Path jdkPath = jvmDir.resolve("jre").resolve("lib").resolve("ext").resolve(name.concat(".jar"));
+            return IOHelper.isFile(jrePath) || IOHelper.isFile(jdkPath);
+        }
+    }
+    public static class ClientLauncherWrapperContext {
+        public JavaVersion javaVersion;
+        public Path executePath;
+        public String mainClass;
+        public int memoryLimit;
+        public ProcessBuilder processBuilder;
+        public List<String> args = new ArrayList<>(8);
+        public Map<String, String> jvmProperties = new HashMap<>();
+        public List<String> classpath = new ArrayList<>();
+        public List<String> jvmModules = new ArrayList<>();
+        public List<String> clientArgs = new ArrayList<>();
+        public List<Path> javaFXPaths = new ArrayList<>();
+        public void addSystemProperty(String name) {
+            String property = System.getProperty(name);
+            if (property != null)
+                jvmProperties.put(name, property);
+        }
     }
 }

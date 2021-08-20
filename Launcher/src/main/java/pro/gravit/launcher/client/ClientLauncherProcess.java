@@ -1,6 +1,5 @@
 package pro.gravit.launcher.client;
 
-import pro.gravit.launcher.ClientLauncherWrapper;
 import pro.gravit.launcher.Launcher;
 import pro.gravit.launcher.LauncherEngine;
 import pro.gravit.launcher.LauncherNetworkAPI;
@@ -31,8 +30,6 @@ import java.util.*;
 public class ClientLauncherProcess {
     public final ClientParams params = new ClientParams();
     public final List<String> jvmArgs = new LinkedList<>();
-    public final List<String> jvmModules = new LinkedList<>();
-    public final List<Path> jvmModulesPaths = new LinkedList<>();
     public final List<String> systemClientArgs = new LinkedList<>();
     public final List<String> systemClassPath = new LinkedList<>();
     public final Map<String, String> systemEnv = new HashMap<>();
@@ -44,7 +41,6 @@ public class ClientLauncherProcess {
     public int bits;
     public boolean useLegacyJavaClassPathProperty;
     public boolean isStarted;
-    public ClientLauncherWrapper.JavaVersion javaVersion;
     private transient Process process;
 
     public ClientLauncherProcess(Path executeFile, Path workDir, Path javaDir, String mainClass) {
@@ -85,12 +81,6 @@ public class ClientLauncherProcess {
         if (view != null) {
             this.params.actions = view.getEnabledActions();
         }
-        try {
-            javaVersion = ClientLauncherWrapper.JavaVersion.getByPath(javaDir);
-        } catch (IOException e) {
-            LogHelper.error(e);
-            javaVersion = ClientLauncherWrapper.JavaVersion.getCurrentJavaVersion();
-        }
         this.bits = JVMHelper.JVM_BITS;
         applyClientProfile();
     }
@@ -116,14 +106,6 @@ public class ClientLauncherProcess {
             this.jvmArgs.add("-Xmx" + params.ram + 'M');
         }
         this.params.session = Request.getSession();
-        
-        if(this.params.profile.getRuntimeInClientConfig() != ClientProfile.RuntimeInClientConfig.NONE) {
-            jvmModules.add("javafx.base");
-            jvmModules.add("javafx.graphics");
-            jvmModules.add("javafx.fxml");
-            jvmModules.add("javafx.controls");
-            jvmModules.add("javafx.swing");
-        }
         LauncherEngine.modulesManager.invokeEvent(new ClientProcessBuilderCreateEvent(this));
     }
 
@@ -134,9 +116,6 @@ public class ClientLauncherProcess {
         List<String> processArgs = new LinkedList<>();
         processArgs.add(executeFile.toString());
         processArgs.addAll(jvmArgs);
-        if(javaVersion.version >= 9) {
-            applyJava9Params(processArgs);
-        }
         //ADD CLASSPATH
         if(params.profile.classLoaderConfig == ClientProfile.ClassLoaderConfig.AGENT) {
             processArgs.add("-javaagent:".concat(IOHelper.getCodeSource(ClientLauncherEntryPoint.class).toAbsolutePath().toString()));
@@ -171,32 +150,6 @@ public class ClientLauncherProcess {
         isStarted = true;
     }
 
-    private void applyJava9Params(List<String> processArgs) {
-        jvmModulesPaths.add(javaVersion.jvmDir);
-        jvmModulesPaths.add(javaVersion.jvmDir.resolve("jre"));
-        Path openjfxPath = ClientLauncherWrapper.tryGetOpenJFXPath(javaVersion.jvmDir);
-        if(openjfxPath != null) {
-            jvmModulesPaths.add(openjfxPath);
-        }
-        StringBuilder modulesPath = new StringBuilder();
-        StringBuilder modulesAdd = new StringBuilder();
-        for(String moduleName : jvmModules) {
-            boolean success = ClientLauncherWrapper.tryAddModule(jvmModulesPaths, moduleName, modulesPath);
-            if(success) {
-                if(modulesAdd.length() > 0) modulesAdd.append(",");
-                modulesAdd.append(moduleName);
-            }
-        }
-        if(modulesAdd.length() > 0) {
-            processArgs.add("--add-modules");
-            processArgs.add(modulesAdd.toString());
-        }
-        if(modulesPath.length() > 0) {
-            processArgs.add("--module-path");
-            processArgs.add(modulesPath.toString());
-        }
-    }
-    
     public void runWriteParams(SocketAddress address) throws IOException {
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.bind(address);

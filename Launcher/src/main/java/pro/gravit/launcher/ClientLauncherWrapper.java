@@ -205,3 +205,45 @@ public class ClientLauncherWrapper {
     return Integer.parseInt(paramString);
   }
 }
+
+public class JavaVersion {
+  public final Path jvmDir;
+  
+  public final int version;
+  
+  public boolean enabledJavaFX;
+  
+  public JavaVersion(Path paramPath, int paramInt) {
+    this.jvmDir = paramPath;
+    this.version = paramInt;
+    this.enabledJavaFX = true;
+  }
+  
+  public static JavaVersion getCurrentJavaVersion() {
+    return new JavaVersion(Paths.get(System.getProperty("java.home"), new String[0]), JVMHelper.getVersion());
+  }
+  
+  public static JavaVersion getByPath(Path paramPath) throws IOException {
+    Path path = paramPath.resolve("release");
+    if (!IOHelper.isFile(path))
+      return null; 
+    Properties properties = new Properties();
+    properties.load(IOHelper.newReader(path));
+    int i = ClientLauncherWrapper.getJavaVersion(properties.getProperty("JAVA_VERSION").replaceAll("\"", ""));
+    JavaVersion javaVersion = new JavaVersion(paramPath, i);
+    if (i <= 8) {
+      javaVersion.enabledJavaFX = isExistExtJavaLibrary(paramPath, "jfxrt");
+    } else {
+      javaVersion.enabledJavaFX = (ClientLauncherWrapper.tryFindModule(paramPath, "javafx.base") != null);
+      if (!javaVersion.enabledJavaFX)
+        javaVersion.enabledJavaFX = (ClientLauncherWrapper.tryFindModule(paramPath.resolve("jre"), "javafx.base") != null); 
+    } 
+    return javaVersion;
+  }
+  
+  public static boolean isExistExtJavaLibrary(Path paramPath, String paramString) {
+    Path path1 = paramPath.resolve("lib").resolve("ext").resolve(paramString.concat(".jar"));
+    Path path2 = paramPath.resolve("jre").resolve("lib").resolve("ext").resolve(paramString.concat(".jar"));
+    return (IOHelper.isFile(path1) || IOHelper.isFile(path2));
+  }
+}

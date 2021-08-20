@@ -485,7 +485,7 @@ public final class ClientProfile implements Comparable<ClientProfile> {
         MC1710("AvinesiaLauncher 1.7.10", 5),
 	MC18("AvinesiaLauncher 1.8", 4),
 	MC181("AvinesiaLauncher 1.8.1", 47),
-	MC181("AvinesiaLauncher 1.8.2", 47),
+	MC182("AvinesiaLauncher 1.8.2", 47),
 	MC183("AvinesiaLauncher 1.8.3", 47),
 	MC184("AvinesiaLauncher 1.8.4", 47),
 	MC185("AvinesiaLauncher 1.8.5", 47),

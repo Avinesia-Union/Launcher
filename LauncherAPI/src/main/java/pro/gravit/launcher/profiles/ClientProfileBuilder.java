@@ -36,6 +36,7 @@ public class ClientProfileBuilder {
     private String info;
     private boolean updateFastCheck = true;
     private String mainClass;
+    private boolean userjoinperms = true;
 
     public ClientProfileBuilder setUpdate(List<String> update) {
         this.update = update;

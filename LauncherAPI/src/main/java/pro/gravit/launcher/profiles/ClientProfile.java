@@ -78,6 +78,8 @@ public final class ClientProfile implements Comparable<ClientProfile> {
     private ProfileDefaultSettings settings = new ProfileDefaultSettings();
     @LauncherNetworkAPI
     private boolean updateFastCheck;
+    @LauncherNetworkAPI
+    private boolean userjoinperms = true;
     // Client launcher
     @LauncherNetworkAPI
     private String mainClass;
@@ -101,7 +103,7 @@ public final class ClientProfile implements Comparable<ClientProfile> {
         runtimeInClientConfig = RuntimeInClientConfig.NONE;
     }
 
-    public ClientProfile(List<String> update, List<String> updateExclusions, List<String> updateShared, List<String> updateVerify, Set<OptionalFile> updateOptional, List<String> jvmArgs, List<String> classPath, List<String> altClassPath, List<String> clientArgs, List<String> compatClasses, Map<String, String> properties, List<ServerProfile> servers, SecurityManagerConfig securityManagerConfig, ClassLoaderConfig classLoaderConfig, SignedClientConfig signedClientConfig, RuntimeInClientConfig runtimeInClientConfig, String version, String assetIndex, String dir, String assetDir, int recommendJavaVersion, int minJavaVersion, int maxJavaVersion, boolean warnMissJavaVersion, ProfileDefaultSettings settings, int sortIndex, UUID uuid, String title, String info, boolean updateFastCheck, String mainClass) {
+    public ClientProfile(List<String> update, List<String> updateExclusions, List<String> updateShared, List<String> updateVerify, Set<OptionalFile> updateOptional, List<String> jvmArgs, List<String> classPath, List<String> altClassPath, List<String> clientArgs, List<String> compatClasses, Map<String, String> properties, List<ServerProfile> servers, SecurityManagerConfig securityManagerConfig, ClassLoaderConfig classLoaderConfig, SignedClientConfig signedClientConfig, RuntimeInClientConfig runtimeInClientConfig, String version, String assetIndex, String dir, String assetDir, int recommendJavaVersion, int minJavaVersion, int maxJavaVersion, boolean warnMissJavaVersion, ProfileDefaultSettings settings, int sortIndex, UUID uuid, String title, String info, boolean updateFastCheck, String mainClass, String userjoinperms) {
         this.update = update;
         this.updateExclusions = updateExclusions;
         this.updateShared = updateShared;
@@ -133,6 +135,7 @@ public final class ClientProfile implements Comparable<ClientProfile> {
         this.info = info;
         this.updateFastCheck = updateFastCheck;
         this.mainClass = mainClass;
+        this.userjoinperms = userjoinperms;
     }
 
     public ServerProfile getDefaultServerProfile() {
@@ -169,6 +172,10 @@ public final class ClientProfile implements Comparable<ClientProfile> {
 
     public String getDir() {
         return dir;
+    }
+    
+    public String getuserjoinperms() {
+        return userjoinperms;
     }
 
     public void setDir(String dir) {
